@@ -2,19 +2,21 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Settings, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Header = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-    // In a real app, this would toggle the theme
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
   return (
-    <header className="w-full py-4 px-6 border-b border-white/10 flex items-center justify-between bg-background">
+    <header className="w-full py-4 px-6 border-b border-border flex items-center justify-between bg-background">
       <div className="flex items-center">
         <h1 
           className="text-xl font-bold cursor-pointer" 
@@ -56,9 +58,9 @@ const Header = () => {
         <Button 
           variant="ghost" 
           className="text-foreground hover:bg-secondary" 
-          onClick={() => navigate("/resources")}
+          onClick={() => navigate("/premium")}
         >
-          Resources
+          Premium
         </Button>
       </nav>
       
@@ -83,9 +85,10 @@ const Header = () => {
           variant="ghost" 
           size="icon" 
           className="rounded-full"
-          onClick={toggleDarkMode}
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {isDarkMode ? (
+          {theme === 'dark' ? (
             <Sun className="h-5 w-5 text-foreground" />
           ) : (
             <Moon className="h-5 w-5 text-foreground" />
@@ -95,7 +98,7 @@ const Header = () => {
           variant="ghost" 
           size="icon" 
           className="rounded-full"
-          onClick={() => navigate("/logout")}
+          onClick={handleLogout}
         >
           <LogOut className="h-5 w-5 text-foreground" />
         </Button>

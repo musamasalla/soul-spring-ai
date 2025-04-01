@@ -1,66 +1,135 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
   id: string;
   email: string;
   name?: string;
   avatar?: string;
+  is_premium?: boolean;
+  usage_limits?: {
+    ai_messages: number;
+    journal_entries: number;
+  };
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isPremium: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  enrollMFA: () => Promise<string>;
+  verifyMFA: (code: string) => Promise<boolean>;
+  checkUsageLimits: (type: 'ai_messages' | 'journal_entries') => {
+    canUse: boolean;
+    remaining: number;
+  };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Check if user is already logged in
+  const [isPremium, setIsPremium] = useState(false);
+  
+  // Handle authentication state changes
   useEffect(() => {
-    const storedUser = localStorage.getItem('mindspring_user');
-    
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('mindspring_user');
+    // First set up the auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          // Update session state
+          setSession(session);
+          
+          // Fetch user profile data from profiles table
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            if (profileError) throw profileError;
+            
+            // Combine auth user data with profile data
+            const userProfile: UserProfile = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: profileData?.name || session.user.email?.split('@')[0] || '',
+              avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profileData?.name || session.user.email || ''}`,
+              is_premium: profileData?.is_premium || false,
+              usage_limits: {
+                ai_messages: profileData?.ai_messages_limit || 10,
+                journal_entries: profileData?.journal_entries_limit || 5,
+              }
+            };
+            
+            setUser(userProfile);
+            setIsPremium(!!profileData?.is_premium);
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+            // Fallback to basic user data if profile fetch fails
+            const basicProfile: UserProfile = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.email?.split('@')[0] || '',
+              avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
+              is_premium: false,
+              usage_limits: {
+                ai_messages: 10,
+                journal_entries: 5,
+              }
+            };
+            setUser(basicProfile);
+            setIsPremium(false);
+          }
+        } else {
+          // Clear user data on logout/session expiry
+          setUser(null);
+          setSession(null);
+          setIsPremium(false);
+        }
+        setIsLoading(false);
       }
-    }
-    
-    setIsLoading(false);
+    );
+
+    // Check for existing session on initial load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setIsLoading(false);
+      }
+      // The session will be handled by the onAuthStateChange listener
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      // Mock login - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock user data
-      const userData: User = {
-        id: `user_${Math.random().toString(36).substr(2, 9)}`,
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${email}`
-      };
+        password,
+      });
       
-      setUser(userData);
-      localStorage.setItem('mindspring_user', JSON.stringify(userData));
+      if (error) throw error;
+      
       toast.success("Welcome back!");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error("Login failed. Please check your credentials.");
+      toast.error(error.message || "Login failed. Please check your credentials.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -71,44 +140,106 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Mock signup - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock user data
-      const userData: User = {
-        id: `user_${Math.random().toString(36).substr(2, 9)}`,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${name}`
-      };
+        password,
+        options: {
+          data: {
+            name: name,
+          },
+        }
+      });
       
-      setUser(userData);
-      localStorage.setItem('mindspring_user', JSON.stringify(userData));
+      if (error) throw error;
+      
       toast.success("Account created successfully!");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
-      toast.error("Signup failed. Please try again.");
+      toast.error(error.message || "Signup failed. Please try again.");
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('mindspring_user');
-    toast.info("You have been logged out.");
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.info("You have been logged out.");
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error("Logout failed. Please try again.");
+    }
+  };
+
+  const enrollMFA = async (): Promise<string> => {
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+      });
+      
+      if (error) throw error;
+      return data.totp.qr_code || '';
+    } catch (error: any) {
+      console.error('MFA enrollment error:', error);
+      toast.error(error.message || "Failed to enable two-factor authentication.");
+      throw error;
+    }
+  };
+
+  const verifyMFA = async (code: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.mfa.challenge({
+        factorId: 'totp',
+        code,
+      });
+      
+      if (error) throw error;
+      return data.challenge.verified || false;
+    } catch (error: any) {
+      console.error('MFA verification error:', error);
+      toast.error(error.message || "Failed to verify authentication code.");
+      return false;
+    }
+  };
+
+  const checkUsageLimits = (type: 'ai_messages' | 'journal_entries') => {
+    // Default limits for free users
+    const defaultLimits = {
+      ai_messages: 10,
+      journal_entries: 5
+    };
+
+    // If premium user, return unlimited
+    if (isPremium) {
+      return { canUse: true, remaining: 999 }; // Unlimited for premium
+    }
+
+    // If user not loaded yet or no limits set
+    if (!user?.usage_limits) {
+      return { canUse: true, remaining: defaultLimits[type] };
+    }
+
+    const limit = user.usage_limits[type] || defaultLimits[type];
+    // In a real app, you would track usage in the database
+    // Here we're just returning the limit for demonstration
+    return { canUse: true, remaining: limit };
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
         isLoading,
         isAuthenticated: !!user,
+        isPremium,
         login,
         signup,
-        logout
+        logout,
+        enrollMFA,
+        verifyMFA,
+        checkUsageLimits
       }}
     >
       {children}

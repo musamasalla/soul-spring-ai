@@ -1,101 +1,92 @@
 
 import { useState, useEffect } from 'react';
 
-// Text-to-speech utility using Web Speech API
-export const speak = (text: string, voice?: SpeechSynthesisVoice, rate = 1, pitch = 1) => {
-  if (!window.speechSynthesis) {
-    console.error('Text-to-speech is not supported in this browser.');
-    return false;
-  }
+interface TextToSpeechProps {
+  rate?: number;
+  pitch?: number;
+  volume?: number;
+}
 
-  // Cancel any ongoing speech
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  
-  if (voice) {
-    utterance.voice = voice;
-  }
-  
-  utterance.rate = rate;
-  utterance.pitch = pitch;
-  
-  window.speechSynthesis.speak(utterance);
-  return true;
-};
-
-export const getAvailableVoices = (): Promise<SpeechSynthesisVoice[]> => {
-  return new Promise((resolve) => {
-    if (!window.speechSynthesis) {
-      resolve([]);
-      return;
-    }
-
-    let voices = window.speechSynthesis.getVoices();
-    
-    if (voices.length) {
-      resolve(voices);
-      return;
-    }
-
-    // Chrome needs a bit of time to load voices
-    window.speechSynthesis.onvoiceschanged = () => {
-      voices = window.speechSynthesis.getVoices();
-      resolve(voices);
-    };
-  });
-};
-
-// Custom hook for text-to-speech
-export const useTextToSpeech = () => {
+export const useTextToSpeech = (options: TextToSpeechProps = {}) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  
+
   useEffect(() => {
-    const loadVoices = async () => {
-      const availableVoices = await getAvailableVoices();
-      setVoices(availableVoices);
-      
-      // Select a default voice (preferably English)
-      const englishVoice = availableVoices.find(voice => voice.lang.includes('en-'));
-      if (englishVoice) {
-        setSelectedVoice(englishVoice);
-      } else if (availableVoices.length > 0) {
-        setSelectedVoice(availableVoices[0]);
+    // Initialize available voices
+    const initVoices = () => {
+      const availableVoices = speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+        setVoices(availableVoices);
+        
+        // Try to find a good default English voice
+        const defaultVoice = availableVoices.find(
+          voice => voice.lang.includes('en') && voice.name.includes('Google') && !voice.name.includes('Male')
+        ) || availableVoices[0];
+        
+        setSelectedVoice(defaultVoice);
       }
     };
-    
-    loadVoices();
-    
-    const handleSpeakingChange = () => {
-      setIsSpeaking(window.speechSynthesis.speaking);
-    };
-    
-    // Check speaking status periodically
-    const interval = setInterval(handleSpeakingChange, 100);
-    
-    return () => {
-      clearInterval(interval);
-      window.speechSynthesis.cancel();
-    };
+
+    // Handle voice list changes
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      // Get initial voices - needed for Chrome
+      initVoices();
+      
+      // Chrome loads voices asynchronously
+      window.speechSynthesis.onvoiceschanged = initVoices;
+      
+      // Clean up
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+      };
+    }
   }, []);
-  
-  const speakText = (text: string, rate = 1, pitch = 1) => {
-    return speak(text, selectedVoice || undefined, rate, pitch);
+
+  const speakText = (text: string) => {
+    if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
+    
+    // Cancel any ongoing speech
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Apply voice if selected
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    
+    // Apply options
+    utterance.rate = options.rate || 1;
+    utterance.pitch = options.pitch || 1;
+    utterance.volume = options.volume || 1;
+    
+    // Event handlers
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    window.speechSynthesis.speak(utterance);
   };
-  
+
   const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
   };
-  
+
   return {
-    voices,
-    selectedVoice,
-    setSelectedVoice,
     isSpeaking,
     speakText,
-    stopSpeaking
+    stopSpeaking,
+    voices,
+    selectedVoice,
+    setSelectedVoice
   };
 };
