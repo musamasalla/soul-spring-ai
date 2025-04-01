@@ -41,12 +41,16 @@ const passwordFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// New schema for AI settings
+const aiSettingsFormSchema = z.object({
+  voiceEnabled: z.boolean(),
+  speechEnabled: z.boolean(),
+  voiceRate: z.array(z.number()),
+  voiceType: z.string(),
+});
+
 const SettingsPage = () => {
   const { user } = useAuth();
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [speechEnabled, setSpeechEnabled] = useState(true);
-  const [voiceRate, setVoiceRate] = useState([1]);
-  const [voiceType, setVoiceType] = useState("female");
   
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -64,6 +68,17 @@ const SettingsPage = () => {
       confirmPassword: "",
     },
   });
+  
+  // AI settings form with proper initialization
+  const aiSettingsForm = useForm<z.infer<typeof aiSettingsFormSchema>>({
+    resolver: zodResolver(aiSettingsFormSchema),
+    defaultValues: {
+      voiceEnabled: true,
+      speechEnabled: true,
+      voiceRate: [1],
+      voiceType: "female",
+    },
+  });
 
   const onProfileSubmit = (data: z.infer<typeof profileFormSchema>) => {
     toast.success("Profile updated successfully");
@@ -74,7 +89,7 @@ const SettingsPage = () => {
     passwordForm.reset();
   };
 
-  const saveAiSettings = () => {
+  const onAiSettingsSubmit = (data: z.infer<typeof aiSettingsFormSchema>) => {
     toast.success("AI settings updated successfully");
   };
 
@@ -206,98 +221,130 @@ const SettingsPage = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="voice-responses">Voice Responses</Label>
-                        <FormDescription>
-                          Enable AI to respond with voice
-                        </FormDescription>
-                      </div>
-                      <Switch
-                        id="voice-responses"
-                        checked={voiceEnabled}
-                        onCheckedChange={setVoiceEnabled}
+                  <Form {...aiSettingsForm}>
+                    <form onSubmit={aiSettingsForm.handleSubmit(onAiSettingsSubmit)} className="space-y-6">
+                      <FormField
+                        control={aiSettingsForm.control}
+                        name="voiceEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <FormLabel>Voice Responses</FormLabel>
+                              <FormDescription>
+                                Enable AI to respond with voice
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="speech-input">Speech Input</Label>
-                        <FormDescription>
-                          Enable voice commands and input
-                        </FormDescription>
-                      </div>
-                      <Switch
-                        id="speech-input"
-                        checked={speechEnabled}
-                        onCheckedChange={setSpeechEnabled}
+                      
+                      <FormField
+                        control={aiSettingsForm.control}
+                        name="speechEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <FormLabel>Speech Input</FormLabel>
+                              <FormDescription>
+                                Enable voice commands and input
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="voice-rate">Voice Rate</Label>
-                        <span className="text-sm text-muted-foreground">
-                          {voiceRate[0].toFixed(1)}x
-                        </span>
-                      </div>
-                      <Slider
-                        id="voice-rate"
-                        disabled={!voiceEnabled}
-                        min={0.5}
-                        max={2}
-                        step={0.1}
-                        value={voiceRate}
-                        onValueChange={setVoiceRate}
+                      
+                      <FormField
+                        control={aiSettingsForm.control}
+                        name="voiceRate"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <FormLabel>Voice Rate</FormLabel>
+                              <span className="text-sm text-muted-foreground">
+                                {field.value[0].toFixed(1)}x
+                              </span>
+                            </div>
+                            <FormControl>
+                              <Slider
+                                disabled={!aiSettingsForm.watch('voiceEnabled')}
+                                min={0.5}
+                                max={2}
+                                step={0.1}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Slower</span>
+                              <span>Faster</span>
+                            </div>
+                          </FormItem>
+                        )}
                       />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Slower</span>
-                        <span>Faster</span>
+                      
+                      <FormField
+                        control={aiSettingsForm.control}
+                        name="voiceType"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel>Voice Type</FormLabel>
+                            <FormControl>
+                              <Select
+                                disabled={!aiSettingsForm.watch('voiceEnabled')}
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select voice type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="female">Female</SelectItem>
+                                  <SelectItem value="male">Male</SelectItem>
+                                  <SelectItem value="neutral">Neutral</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="pt-4">
+                        <Button 
+                          type="submit"
+                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          <Volume2 className="mr-2 h-4 w-4" />
+                          Save Voice Settings
+                        </Button>
+                        <Button 
+                          type="button"
+                          className="w-full mt-2" 
+                          variant="outline"
+                          onClick={() => {
+                            // Test voice
+                            const msg = new SpeechSynthesisUtterance();
+                            msg.text = "This is a test of your voice settings.";
+                            msg.rate = aiSettingsForm.watch('voiceRate')[0];
+                            window.speechSynthesis.speak(msg);
+                          }}
+                        >
+                          Test Voice
+                        </Button>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="voice-type">Voice Type</Label>
-                      <Select
-                        disabled={!voiceEnabled}
-                        value={voiceType}
-                        onValueChange={setVoiceType}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select voice type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="neutral">Neutral</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="pt-4">
-                      <Button 
-                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                        onClick={saveAiSettings}
-                      >
-                        <Volume2 className="mr-2 h-4 w-4" />
-                        Save Voice Settings
-                      </Button>
-                      <Button 
-                        className="w-full mt-2" 
-                        variant="outline"
-                        onClick={() => {
-                          // Test voice
-                          const msg = new SpeechSynthesisUtterance();
-                          msg.text = "This is a test of your voice settings.";
-                          msg.rate = voiceRate[0];
-                          window.speechSynthesis.speak(msg);
-                        }}
-                      >
-                        Test Voice
-                      </Button>
-                    </div>
-                  </div>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
