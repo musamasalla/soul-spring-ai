@@ -1,13 +1,16 @@
 
 import Header from "@/components/Header";
-import AIChat from "@/components/AIChat";
+import EnhancedAIChat from "@/components/EnhancedAIChat";
 import MoodTracker from "@/components/MoodTracker";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Brain, History, Settings, MessageSquare, User, PlusCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AITherapyPage = () => {
+  const { user } = useAuth();
+  
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
@@ -60,6 +63,28 @@ const AITherapyPage = () => {
                   </Button>
                 </CardContent>
               </Card>
+              
+              {user && (
+                <Card className="glass-card">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg font-semibold">Your Profile</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full">
+                      Manage Profile
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
             
             {/* Main Chat Area */}
@@ -77,7 +102,7 @@ const AITherapyPage = () => {
                 </TabsList>
                 
                 <TabsContent value="chat" className="h-[600px] glass-card overflow-hidden rounded-lg">
-                  <AIChat />
+                  <EnhancedAIChat />
                 </TabsContent>
                 
                 <TabsContent value="settings">
