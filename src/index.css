@@ -14,7 +14,7 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 170 75% 41%; /* Teal color */
+    --primary: 265 89% 78%; /* Purple color */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 240 3.7% 15.9%;
@@ -31,18 +31,18 @@
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 170 75% 41%;
+    --ring: 265 89% 78%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 170 75% 41%;
+    --sidebar-primary: 265 89% 78%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 170 75% 41%;
+    --sidebar-ring: 265 89% 78%;
   }
 }
 
@@ -66,4 +66,44 @@
 
 .card-hover {
   @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+}
+
+.gradient-border {
+  @apply relative rounded-xl before:absolute before:-z-10 before:rounded-xl;
+  @apply before:-inset-[1px] before:bg-gradient-to-r before:from-primary before:to-purple-300;
+}
+
+.neo-card {
+  @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)];
+  @apply hover:shadow-[0_8px_30px_rgba(120,0,255,0.15)] transition-all duration-300;
+  @apply group-hover:border-primary/40;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(120, 0, 255, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(120, 0, 255, 0.6);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
