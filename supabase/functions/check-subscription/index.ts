@@ -50,7 +50,7 @@ serve(async (req: Request) => {
     // Check user's subscription status in the database
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('is_premium, subscription_end_date')
+      .select('is_premium')
       .eq('id', user.id)
       .single();
 
@@ -67,15 +67,12 @@ serve(async (req: Request) => {
 
     // Check if user has an active premium subscription
     const isPremium = profile?.is_premium || false;
-    const subscriptionEndDate = profile?.subscription_end_date ? new Date(profile.subscription_end_date) : null;
-    const isSubscriptionActive = isPremium && subscriptionEndDate && new Date() < subscriptionEndDate;
 
-    console.log(`Checked subscription for user ${user.id}. Premium: ${isPremium}, Active: ${isSubscriptionActive}`);
+    console.log(`Checked subscription for user ${user.id}. Premium: ${isPremium}`);
 
     return new Response(
       JSON.stringify({ 
-        isPremium: isSubscriptionActive,
-        subscriptionEndDate: subscriptionEndDate
+        isPremium: isPremium,
       }),
       { 
         status: 200,

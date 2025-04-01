@@ -191,11 +191,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase.auth.mfa.challenge({
         factorId: 'totp',
-        code,
+        challengeId: 'totp',
       });
       
       if (error) throw error;
-      return data.challenge.verified || false;
+      
+      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: 'totp',
+        challengeId: data.id,
+        code: code,
+      });
+      
+      if (verifyError) throw verifyError;
+      return verifyData.verified || false;
     } catch (error: any) {
       console.error('MFA verification error:', error);
       toast.error(error.message || "Failed to verify authentication code.");

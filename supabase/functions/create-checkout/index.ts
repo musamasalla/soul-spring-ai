@@ -47,6 +47,9 @@ serve(async (req: Request) => {
       );
     }
 
+    // Parse request body to get plan details
+    const { planId } = await req.json();
+    
     // In a production environment, integrate with Stripe here
     // This is a mock implementation for demonstration
     
@@ -56,6 +59,20 @@ serve(async (req: Request) => {
       url: "https://example.com/checkout/success?session_id=mock_session",
       // In a real implementation, this would be the URL to redirect to Stripe's checkout page
     };
+
+    // For demonstration, update the user's profile to premium status
+    const { error: updateError } = await supabaseClient
+      .from('profiles')
+      .update({ 
+        is_premium: true,
+        ai_messages_limit: 999,
+        journal_entries_limit: 999
+      })
+      .eq('id', user.id);
+      
+    if (updateError) {
+      throw new Error(`Failed to update user profile: ${updateError.message}`);
+    }
 
     console.log(`Created checkout session for user ${user.id}: ${checkoutSession.id}`);
 

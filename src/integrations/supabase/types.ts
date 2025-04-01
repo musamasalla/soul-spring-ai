@@ -42,6 +42,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          ai_messages_limit: number | null
+          avatar_url: string | null
+          created_at: string | null
+          id: string
+          is_premium: boolean | null
+          journal_entries_limit: number | null
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_messages_limit?: number | null
+          avatar_url?: string | null
+          created_at?: string | null
+          id: string
+          is_premium?: boolean | null
+          journal_entries_limit?: number | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_messages_limit?: number | null
+          avatar_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_premium?: boolean | null
+          journal_entries_limit?: number | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       mood_statistics: {

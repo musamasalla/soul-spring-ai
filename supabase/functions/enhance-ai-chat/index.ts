@@ -50,8 +50,21 @@ serve(async (req: Request) => {
       );
     }
 
+    // Get user profile to check premium status
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('is_premium, ai_messages_limit')
+      .eq('id', user.id)
+      .single();
+      
+    if (profileError) {
+      throw new Error(`Failed to fetch user profile: ${profileError.message}`);
+    }
+    
+    const isPremium = profile?.is_premium || false;
+
     // Parse request body
-    const { message, isPremium } = await req.json();
+    const { message } = await req.json();
 
     // Check usage limit for non-premium users
     if (!isPremium) {
@@ -64,7 +77,7 @@ serve(async (req: Request) => {
         .single();
 
       const currentCount = usageData?.count || 0;
-      const MAX_FREE_MESSAGES = 10;
+      const MAX_FREE_MESSAGES = profile?.ai_messages_limit || 10;
 
       if (currentCount >= MAX_FREE_MESSAGES) {
         return new Response(
