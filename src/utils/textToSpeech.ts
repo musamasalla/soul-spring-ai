@@ -1,4 +1,6 @@
 
+import { useState, useEffect } from 'react';
+
 // Text-to-speech utility using Web Speech API
 export const speak = (text: string, voice?: SpeechSynthesisVoice, rate = 1, pitch = 1) => {
   if (!window.speechSynthesis) {
