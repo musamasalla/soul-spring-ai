@@ -8,7 +8,7 @@ import {
   Smile, 
   Meh, 
   Frown, 
-  FrownPlus, 
+  Skull, // Replacing FrownPlus with Skull for "Terrible" mood
   CalendarDays 
 } from "lucide-react";
 
@@ -17,7 +17,7 @@ const moods = [
   { icon: Smile, label: "Good", color: "text-emerald-400" },
   { icon: Meh, label: "Neutral", color: "text-yellow-400" },
   { icon: Frown, label: "Low", color: "text-orange-400" },
-  { icon: FrownPlus, label: "Terrible", color: "text-red-400" },
+  { icon: Skull, label: "Terrible", color: "text-red-400" }, // Updated icon
 ];
 
 const MoodTracker = () => {
