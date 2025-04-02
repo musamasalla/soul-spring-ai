@@ -54,6 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             // Use let instead of const for profileData since we need to reassign it
             let profileData = null;
+            
+            // First try to get existing profile
             const { data, error: profileError } = await supabase
               .from('profiles')
               .select('*')
@@ -66,48 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.warn('Profile fetch error:', profileError.message);
             }
             
-            // If profile doesn't exist or there was an error, create a new profile
+            // If profile doesn't exist, create a new profile
             if (!profileData) {
               console.log('Creating new profile for user:', session.user.id);
               
-              // Create a separate admin client with service role
-              const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
-              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-              
-              // Only attempt to create profile if we have a service key
-              if (SUPABASE_SERVICE_KEY) {
-                // Create a service role client that can bypass RLS
-                const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-                  auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                  }
-                });
-                
-                // Try creating profile with service role
-                const { data: newProfile, error: createError } = await serviceClient
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    name: session.user.email?.split('@')[0] || '',
-                    avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
-                    is_premium: false,
-                    ai_messages_limit: 10,
-                    journal_entries_limit: 5
-                  })
-                  .select('*')
-                  .single();
-                
-                if (createError) {
-                  console.error('Error creating user profile with service role:', createError);
-                } else {
-                  console.log('New profile created successfully with service role');
-                  profileData = newProfile;
-                }
-              } else {
-                console.error('No service role key available - cannot create profile with admin privileges');
-                
-                // Fall back to regular client (might fail due to RLS)
+              try {
+                // Create profile with normal user permissions
+                // This will work if the RLS policy and triggers are set up correctly
                 const { data: newProfile, error: createError } = await supabase
                   .from('profiles')
                   .insert({
@@ -122,15 +89,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   .maybeSingle();
                 
                 if (createError) {
-                  console.error('Error creating user profile with regular client:', createError);
+                  console.error('Error creating user profile:', createError);
+                  // Don't throw error - use fallback profile below
                 } else {
-                  console.log('New profile created successfully with regular client');
+                  console.log('New profile created successfully');
                   profileData = newProfile;
                 }
+              } catch (insertError) {
+                console.error('Exception creating profile:', insertError);
+                // Continue with fallback profile
               }
             }
             
-            // Combine auth user data with profile data
+            // Combine auth user data with profile data (or fallback data if profile creation failed)
             const userProfile: UserProfile = {
               id: session.user.id,
               email: session.user.email || '',
