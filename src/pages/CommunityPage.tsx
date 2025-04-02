@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,83 +8,140 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
-import { Heart, MessageCircle, Share2, Filter, Search, Users, Send, AlertTriangle } from "lucide-react";
+import { Filter, Search, Users, Send, AlertTriangle, Loader2, Shield, Settings } from "lucide-react";
+import { PostCard } from "@/components/PostCard";
+import { EnhancedPost, CommunityCategory } from "@/types/community";
+import { fetchPosts, createPost, fetchCategories } from "@/utils/communityService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Post {
-  id: string;
-  author: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  content: string;
-  created_at: string;
-  likes: number;
-  comments: number;
-  isLiked?: boolean;
-  tags?: string[];
+interface CommunitySettings {
+  disable_community: boolean;
+  hide_sensitive_content: boolean;
+  auto_moderation: boolean;
+  mute_notifications: boolean;
+  allow_direct_messages: boolean;
 }
 
 const CommunityPage = () => {
   const { user, isPremium } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: "1",
-      author: {
-        id: "user1",
-        name: "Sarah J.",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-      },
-      content: "Just completed a 30-day meditation challenge! It's been amazing for my anxiety and sleep quality. Has anyone else tried this?",
-      created_at: "2023-10-15T10:30:00Z",
-      likes: 24,
-      comments: 8,
-      isLiked: false,
-      tags: ["meditation", "challenge", "anxiety"]
-    },
-    {
-      id: "2",
-      author: {
-        id: "user2",
-        name: "Michael T.",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-      },
-      content: "Looking for recommendations on guided breathing exercises for panic attacks. The ones in the app have been helpful, but I'd love to hear what works for others!",
-      created_at: "2023-10-14T15:45:00Z",
-      likes: 18,
-      comments: 12,
-      isLiked: true,
-      tags: ["anxiety", "panic", "breathing"]
-    },
-    {
-      id: "3",
-      author: {
-        id: "user3",
-        name: "Elena R.",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Elena"
-      },
-      content: "Today marks 6 months since I started therapy alongside using this app. The combination has been transformative for my mental health journey. Stay strong everyone!",
-      created_at: "2023-10-10T09:15:00Z",
-      likes: 45,
-      comments: 15,
-      isLiked: false,
-      tags: ["therapy", "mentalhealth", "progress"]
-    }
-  ]);
-  
+  const [posts, setPosts] = useState<EnhancedPost[]>([]);
+  const [categories, setCategories] = useState<CommunityCategory[]>([]);
   const [newPost, setNewPost] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [communitySettings, setCommunitySettings] = useState<CommunitySettings>({
+    disable_community: false,
+    hide_sensitive_content: true,
+    auto_moderation: true,
+    mute_notifications: false,
+    allow_direct_messages: true,
+  });
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
-  const handleLikePost = (postId: string) => {
+  // Load user's community settings
+  useEffect(() => {
+    const loadCommunitySettings = async () => {
+      if (!user?.id) {
+        setIsLoadingSettings(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('community_settings')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.community_settings) {
+          setCommunitySettings(data.community_settings as CommunitySettings);
+        }
+      } catch (error) {
+        console.error("Error loading community settings:", error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+    
+    loadCommunitySettings();
+  }, [user]);
+
+  // Function to load posts
+  const loadPosts = async (categoryId?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetchedPosts = await fetchPosts({
+        categoryId: categoryId === "all" ? undefined : categoryId,
+        searchQuery: searchTerm || undefined
+      });
+      
+      // If hide_sensitive_content is enabled, filter out posts with sensitive tags
+      let filteredPosts = fetchedPosts;
+      if (communitySettings.hide_sensitive_content) {
+        const sensitiveTags = ['depression', 'suicide', 'self-harm', 'trauma', 'abuse', 'violence', 'anxiety'];
+        filteredPosts = fetchedPosts.filter(post => {
+          // Check if post has no tags or none of the sensitive tags
+          if (!post.tags || post.tags.length === 0) return true;
+          
+          return !post.tags.some(tag => 
+            sensitiveTags.includes(tag.toLowerCase())
+          );
+        });
+      }
+      
+      setPosts(filteredPosts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      setError("Failed to load posts. Please try again later.");
+      toast.error("Failed to load posts. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load categories
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const fetchedCategories = await fetchCategories();
+        setCategories(fetchedCategories);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
+      }
+    };
+    
+    loadCategories();
+  }, []);
+
+  // Load posts when component mounts or when filter or search changes
+  useEffect(() => {
+    // Only load posts if community access is not disabled or settings are still loading
+    if (!isLoadingSettings && !communitySettings.disable_community) {
+      const timer = setTimeout(() => {
+        loadPosts(filter !== "all" ? filter : undefined);
+      }, 300); // Add debounce for search
+
+      return () => clearTimeout(timer);
+    }
+  }, [filter, searchTerm, communitySettings.disable_community, isLoadingSettings]);
+
+  const handlePostLike = (postId: string, liked: boolean) => {
     setPosts(posts.map(post => {
       if (post.id === postId) {
-        const newIsLiked = !post.isLiked;
         return {
           ...post,
-          isLiked: newIsLiked,
-          likes: post.likes + (newIsLiked ? 1 : -1)
+          isLiked: liked,
+          likes_count: liked ? post.likes_count + 1 : post.likes_count - 1
         };
       }
       return post;
@@ -94,30 +150,42 @@ const CommunityPage = () => {
 
   const handleSubmitPost = async () => {
     if (!newPost.trim()) return;
+    if (!user) {
+      toast.error("Please log in to create a post");
+      return;
+    }
+
+    // Check for potentially sensitive content if auto moderation is enabled
+    if (communitySettings.auto_moderation) {
+      const sensitiveTerms = ['kill', 'die', 'suicide', 'harm', 'hurt myself', 'end it all'];
+      const containsSensitiveContent = sensitiveTerms.some(term => 
+        newPost.toLowerCase().includes(term.toLowerCase())
+      );
+      
+      if (containsSensitiveContent) {
+        toast.error("Your post may contain sensitive content that goes against our community guidelines. Please revise your post or contact support for help.");
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Extract hashtags from content
+      const hashtags = newPost.match(/#(\w+)/g)?.map(tag => tag.substring(1)) || [];
       
-      const newPostObj: Post = {
-        id: Date.now().toString(),
-        author: {
-          id: user?.id || "unknown",
-          name: user?.name || "Anonymous",
-          avatar: user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || "Anonymous"}`
-        },
+      // Create post in database
+      const createdPost = await createPost({
         content: newPost,
-        created_at: new Date().toISOString(),
-        likes: 0,
-        comments: 0,
-        isLiked: false,
-        tags: newPost.match(/#(\w+)/g)?.map(tag => tag.substring(1)) || []
-      };
+        is_anonymous: false,
+        is_premium_only: false
+      });
       
-      setPosts([newPostObj, ...posts]);
-      setNewPost("");
-      toast.success("Post shared with the community!");
+      if (createdPost) {
+        // Add post to state
+        setPosts([createdPost, ...posts]);
+        setNewPost("");
+        toast.success("Post shared with the community!");
+      }
     } catch (error) {
       console.error("Error creating post:", error);
       toast.error("Failed to share your post. Please try again.");
@@ -126,22 +194,45 @@ const CommunityPage = () => {
     }
   };
 
-  // Filter posts based on selected filter and search term
-  const filteredPosts = posts.filter(post => {
-    // Search term filter
-    const matchesSearch = searchTerm === "" || 
-      post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.author.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      post.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    // Category filter
-    if (filter === "all") return matchesSearch;
-    if (filter === "liked") return matchesSearch && post.isLiked;
-    if (filter === "meditation") return matchesSearch && post.tags?.includes("meditation");
-    if (filter === "anxiety") return matchesSearch && post.tags?.includes("anxiety");
-    
-    return matchesSearch;
-  });
+  // If community is disabled or settings are still loading, show appropriate UI
+  if (isLoadingSettings) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto p-4 pt-6">
+          <div className="flex justify-center items-center min-h-[60vh]">
+            <Loader2 className="h-12 w-12 text-primary animate-spin" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (communitySettings.disable_community) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto p-4 pt-6">
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-md mx-auto">
+            <Shield className="h-16 w-16 text-muted-foreground mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Community Features Disabled</h1>
+            <p className="text-muted-foreground mb-6">
+              You've chosen to disable community features. This helps create a more controlled environment for your mental health journey.
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              You can re-enable community access in your privacy settings at any time.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/settings'}
+              variant="outline"
+            >
+              <Settings className="mr-2 h-4 w-4" /> Manage Privacy Settings
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,13 +244,36 @@ const CommunityPage = () => {
             <h1 className="text-3xl font-bold">Community</h1>
             <p className="text-muted-foreground">Connect with others on their mental health journey</p>
           </div>
-          <Button 
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => window.scrollTo({ top: document.getElementById('new-post')?.offsetTop, behavior: 'smooth' })}
-          >
-            <Users className="mr-2 h-4 w-4" /> New Post
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => window.location.href = '/settings?tab=privacy'}
+              className="hidden sm:flex"
+            >
+              <Shield className="mr-2 h-4 w-4" /> Privacy Settings
+            </Button>
+            <Button 
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => window.scrollTo({ top: document.getElementById('new-post')?.offsetTop, behavior: 'smooth' })}
+            >
+              <Users className="mr-2 h-4 w-4" /> New Post
+            </Button>
+          </div>
         </div>
+        
+        {communitySettings.hide_sensitive_content && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800/50 mb-6">
+            <div className="flex items-start gap-3">
+              <Shield className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-500">Content Filtering Enabled</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Some posts may be hidden to protect your mental wellbeing. You can adjust this in your privacy settings.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Search and Filter */}
         <div className="mb-6 flex flex-col md:flex-row gap-4">
@@ -174,16 +288,19 @@ const CommunityPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <option value="all">All Posts</option>
-              <option value="liked">Liked</option>
-              <option value="meditation">Meditation</option>
-              <option value="anxiety">Anxiety</option>
-            </select>
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Posts</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -209,16 +326,24 @@ const CommunityPage = () => {
                 <p className="text-xs text-muted-foreground mt-1">
                   Be respectful and supportive. Use #tags like #meditation or #anxiety to categorize.
                 </p>
+                {communitySettings.auto_moderation && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    <AlertTriangle className="inline-block h-3 w-3 mr-1" /> 
+                    Content moderation is enabled. Posts with harmful content may be automatically filtered.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
           <CardFooter className="justify-end">
             <Button 
               onClick={handleSubmitPost}
-              disabled={!newPost.trim() || isSubmitting}
+              disabled={!newPost.trim() || isSubmitting || !user}
             >
               {isSubmitting ? (
-                <>Posting...</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...
+                </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" /> Share Post
@@ -229,67 +354,43 @@ const CommunityPage = () => {
         </Card>
 
         <div className="space-y-6">
-          {filteredPosts.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
+              <p className="mt-4 text-muted-foreground">Loading posts...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <AlertTriangle className="mx-auto h-12 w-12 text-destructive opacity-50" />
+              <h3 className="mt-4 text-lg font-medium">Error loading posts</h3>
+              <p className="text-muted-foreground">{error}</p>
+              <Button 
+                variant="outline" 
+                onClick={() => loadPosts(filter !== "all" ? filter : undefined)}
+                className="mt-4"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : posts.length === 0 ? (
             <div className="text-center py-12">
               <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
               <h3 className="mt-4 text-lg font-medium">No posts found</h3>
               <p className="text-muted-foreground">
                 {searchTerm || filter !== "all" 
                   ? 'Try a different search term or filter' 
-                  : 'Be the first to post in our community!'}
+                  : communitySettings.hide_sensitive_content 
+                    ? 'No posts match your current privacy filter settings' 
+                    : 'Be the first to post in our community!'}
               </p>
             </div>
           ) : (
-            filteredPosts.map((post) => (
-              <Card key={post.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={post.author.avatar} alt={post.author.name} />
-                      <AvatarFallback>{post.author.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{post.author.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(post.created_at).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-wrap">{post.content}</p>
-                  {post.tags && post.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
-                      {post.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          #{tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="border-t border-border p-2 flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleLikePost(post.id)}
-                    className={post.isLiked ? "text-red-500" : ""}
-                  >
-                    <Heart className={`mr-1 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} /> {post.likes}
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <MessageCircle className="mr-1 h-4 w-4" /> {post.comments}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="ml-auto">
-                    <Share2 className="mr-1 h-4 w-4" /> Share
-                  </Button>
-                </CardFooter>
-              </Card>
+            posts.map((post) => (
+              <PostCard 
+                key={post.id} 
+                post={post} 
+                onLike={handlePostLike} 
+              />
             ))
           )}
         </div>

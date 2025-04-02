@@ -200,7 +200,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border border-border p-2 rounded-md shadow-md text-xs">
-          <p className="font-medium">{payload[0]?.payload?.fullDate || label}</p>
+          <div className="font-medium">{payload[0]?.payload?.fullDate || label}</div>
           {payload[0]?.payload?.value !== null ? (
             <div className="flex flex-col gap-1 mt-1">
               <div className="flex items-center gap-1">
@@ -213,7 +213,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
               </div>
             </div>
           ) : (
-            <p className="text-muted-foreground">No mood data</p>
+            <div className="text-muted-foreground">No mood data</div>
           )}
         </div>
       );
@@ -263,7 +263,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
             </div>
           ) : moodData.length === 0 ? (
             <div className="h-40 flex items-center justify-center text-center text-muted-foreground text-sm">
-              <p>No mood data available for this period</p>
+              <div>No mood data available for this period</div>
             </div>
           ) : (
             <>
@@ -271,7 +271,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
                 <div className="mb-2 px-3 flex items-center justify-between">
                   <div className="flex items-center gap-1 text-sm">
                     <span className="font-medium">Trend:</span>
-                    <Badge variant={trendInfo.direction === 'up' ? 'success' : trendInfo.direction === 'down' ? 'destructive' : 'outline'} className="text-xs">
+                    <Badge variant={trendInfo.direction === 'up' ? 'secondary' : trendInfo.direction === 'down' ? 'destructive' : 'outline'} className="text-xs">
                       {trendInfo.direction === 'up' ? (
                         <TrendingUp className="h-3 w-3 mr-1" />
                       ) : trendInfo.direction === 'down' ? (
@@ -340,7 +340,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
             )}
           </div>
         </div>
-        <CardDescription className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground flex items-center justify-between mt-1.5">
           <div>
             {timeRange === 'week' && (
               <span className="flex items-center gap-1">
@@ -359,7 +359,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
           {trendInfo && (
             <div className="flex items-center gap-1">
               <span className="text-sm font-medium">Trend:</span>
-              <Badge variant={trendInfo.direction === 'up' ? 'success' : trendInfo.direction === 'down' ? 'destructive' : 'outline'}>
+              <Badge variant={trendInfo.direction === 'up' ? 'secondary' : trendInfo.direction === 'down' ? 'destructive' : 'outline'}>
                 {trendInfo.direction === 'up' ? (
                   <TrendingUp className="h-3 w-3 mr-1" />
                 ) : trendInfo.direction === 'down' ? (
@@ -375,7 +375,7 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
               </Badge>
             </div>
           )}
-        </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -385,8 +385,8 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
         ) : moodData.length === 0 ? (
           <div className="h-60 flex items-center justify-center text-center text-muted-foreground">
             <div>
-              <p className="mb-2">No mood data available for this period</p>
-              <p className="text-sm">Track your mood regularly to see patterns over time</p>
+              <div className="mb-2">No mood data available for this period</div>
+              <div className="text-sm">Track your mood regularly to see patterns over time</div>
             </div>
           </div>
         ) : (
@@ -494,10 +494,10 @@ export default function MoodHistoryChart({ userId, compact = false, height = 300
             </Tabs>
             
             <div className="mt-4 text-xs text-muted-foreground">
-              <p className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 <Info className="h-3 w-3" />
                 Chart shows your average mood levels over time. Higher values indicate more positive moods.
-              </p>
+              </div>
             </div>
           </>
         )}

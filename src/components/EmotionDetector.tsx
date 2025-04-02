@@ -439,7 +439,7 @@ const EmotionDetector: React.FC<EmotionDetectorProps> = ({
         
         {emotionData.recommendedTechniques && emotionData.recommendedTechniques.length > 0 && (
           <div className="mt-2">
-            <p className="text-xs text-muted-foreground mb-1">Recommended techniques:</p>
+            <div className="text-xs text-muted-foreground mb-1">Recommended techniques:</div>
             <div className="flex flex-wrap gap-1">
               {emotionData.recommendedTechniques.map((technique, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">

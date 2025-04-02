@@ -27,7 +27,7 @@ export interface TechniqueData {
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
-const therapyTechniquesList: TechniqueData[] = [
+export const therapyTechniquesList: TechniqueData[] = [
   {
     id: 'grounding',
     name: '5-4-3-2-1 Grounding',
