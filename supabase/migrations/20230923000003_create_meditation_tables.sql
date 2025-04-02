@@ -83,18 +83,38 @@ CREATE POLICY "Users can update their own meditation history"
   USING (auth.uid() = user_id);
 
 -- Create policies for mood_entries
-CREATE POLICY "Users can view their own mood entries"
-  ON public.mood_entries FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own mood entries'
+    ) THEN
+        CREATE POLICY "Users can view their own mood entries"
+        ON public.mood_entries FOR SELECT
+        USING (auth.uid() = user_id);
+    END IF;
 
-CREATE POLICY "Users can insert their own mood entries"
-  ON public.mood_entries FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert their own mood entries'
+    ) THEN
+        CREATE POLICY "Users can insert their own mood entries"
+        ON public.mood_entries FOR INSERT
+        WITH CHECK (auth.uid() = user_id);
+    END IF;
 
-CREATE POLICY "Users can update their own mood entries"
-  ON public.mood_entries FOR UPDATE
-  USING (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE policyname = 'Users can update their own mood entries'
+    ) THEN
+        CREATE POLICY "Users can update their own mood entries"
+        ON public.mood_entries FOR UPDATE
+        USING (auth.uid() = user_id);
+    END IF;
 
-CREATE POLICY "Users can delete their own mood entries"
-  ON public.mood_entries FOR DELETE
-  USING (auth.uid() = user_id); 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE policyname = 'Users can delete their own mood entries'
+    ) THEN
+        CREATE POLICY "Users can delete their own mood entries"
+        ON public.mood_entries FOR DELETE
+        USING (auth.uid() = user_id);
+    END IF;
+END
+$$; 
