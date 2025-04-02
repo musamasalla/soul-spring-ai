@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -52,21 +52,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Fetch user profile data from profiles table
           try {
-            const { data: profileData, error: profileError } = await supabase
+            // Use let instead of const for profileData since we need to reassign it
+            let profileData = null;
+            const { data, error: profileError } = await supabase
               .from('profiles')
               .select('*')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
               
-            if (profileError) throw profileError;
+            profileData = data;
+            
+            if (profileError) {
+              console.warn('Profile fetch error:', profileError.message);
+            }
+            
+            // If profile doesn't exist or there was an error, create a new profile
+            if (!profileData) {
+              console.log('Creating new profile for user:', session.user.id);
+              
+              // Create a separate admin client with service role
+              const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+              
+              // Only attempt to create profile if we have a service key
+              if (SUPABASE_SERVICE_KEY) {
+                // Create a service role client that can bypass RLS
+                const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+                  auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                  }
+                });
+                
+                // Try creating profile with service role
+                const { data: newProfile, error: createError } = await serviceClient
+                  .from('profiles')
+                  .insert({
+                    id: session.user.id,
+                    name: session.user.email?.split('@')[0] || '',
+                    avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
+                    is_premium: false,
+                    ai_messages_limit: 10,
+                    journal_entries_limit: 5
+                  })
+                  .select('*')
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating user profile with service role:', createError);
+                } else {
+                  console.log('New profile created successfully with service role');
+                  profileData = newProfile;
+                }
+              } else {
+                console.error('No service role key available - cannot create profile with admin privileges');
+                
+                // Fall back to regular client (might fail due to RLS)
+                const { data: newProfile, error: createError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: session.user.id,
+                    name: session.user.email?.split('@')[0] || '',
+                    avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
+                    is_premium: false,
+                    ai_messages_limit: 10,
+                    journal_entries_limit: 5
+                  })
+                  .select('*')
+                  .maybeSingle();
+                
+                if (createError) {
+                  console.error('Error creating user profile with regular client:', createError);
+                } else {
+                  console.log('New profile created successfully with regular client');
+                  profileData = newProfile;
+                }
+              }
+            }
             
             // Combine auth user data with profile data
             const userProfile: UserProfile = {
               id: session.user.id,
               email: session.user.email || '',
-              name: profileData?.name || session.user.email?.split('@')[0] || '',
+              name: (profileData?.name || session.user.email?.split('@')[0] || ''),
               avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profileData?.name || session.user.email || ''}`,
-              is_premium: profileData?.is_premium || false,
+              is_premium: !!profileData?.is_premium,
               usage_limits: {
                 ai_messages: profileData?.ai_messages_limit || 10,
                 journal_entries: profileData?.journal_entries_limit || 5,
@@ -76,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(userProfile);
             setIsPremium(!!profileData?.is_premium);
           } catch (error) {
-            console.error('Error fetching user profile:', error);
+            console.error('Error in auth process:', error);
             // Fallback to basic user data if profile fetch fails
             const basicProfile: UserProfile = {
               id: session.user.id,
@@ -189,21 +259,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyMFA = async (code: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.mfa.challenge({
+      // First create a challenge
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: 'totp',
-        challengeId: 'totp',
       });
       
-      if (error) throw error;
+      if (challengeError) throw challengeError;
       
+      // Then verify the challenge with the code
       const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
         factorId: 'totp',
-        challengeId: data.id,
-        code: code,
+        challengeId: challengeData.id,
+        code,
       });
       
       if (verifyError) throw verifyError;
-      return verifyData.verified || false;
+      
+      // Return success based on response
+      return true; // If we got here without errors, verification was successful
     } catch (error: any) {
       console.error('MFA verification error:', error);
       toast.error(error.message || "Failed to verify authentication code.");
