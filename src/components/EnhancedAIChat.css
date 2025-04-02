@@ -1,0 +1,101 @@
+/* EnhancedAIChat.css */
+.glass-card {
+  backdrop-filter: blur(10px);
+  background-color: rgba(var(--card), 0.7);
+  border: 1px solid rgba(var(--border), 0.2);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background-color: rgba(var(--card), 0.9);
+  border-color: rgba(var(--border), 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat bubble styling */
+.chat-bubble-user {
+  border-radius: 20px 0 20px 20px;
+}
+
+.chat-bubble-assistant {
+  border-radius: 0 20px 20px 20px;
+}
+
+/* Voice button animation */
+.voice-active {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--primary), 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(var(--primary), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary), 0);
+  }
+}
+
+/* Session sidebar */
+.session-sidebar {
+  width: 48px;
+  transition: width 0.3s ease;
+}
+
+.session-sidebar:hover {
+  width: 250px;
+}
+
+.session-list {
+  opacity: 0;
+  width: 0;
+  transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+.session-sidebar:hover .session-list {
+  opacity: 1;
+  width: 200px;
+}
+
+/* Message typing indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.typing-indicator span {
+  height: 8px;
+  width: 8px;
+  float: left;
+  margin: 0 1px;
+  background-color: rgba(var(--primary));
+  display: block;
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+.typing-indicator span:nth-of-type(1) {
+  animation: typing 1s infinite;
+}
+
+.typing-indicator span:nth-of-type(2) {
+  animation: typing 1s 0.25s infinite;
+}
+
+.typing-indicator span:nth-of-type(3) {
+  animation: typing 1s 0.5s infinite;
+}
+
+@keyframes typing {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+} 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +14,7 @@ import Header from "@/components/Header";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Loader2, QrCode, KeyRound, Check } from "lucide-react";
+import { Loader2, QrCode, KeyRound, Check, Moon, Sun } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const profileFormSchema = z.object({
@@ -63,7 +62,7 @@ type MFAFormValues = z.infer<typeof mfaFormSchema>;
 
 const SettingsPage = () => {
   const { user, enrollMFA, verifyMFA, isPremium } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, setTheme } = useTheme();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [isEnrollingMFA, setIsEnrollingMFA] = useState(false);
   const [isMFAEnabled, setIsMFAEnabled] = useState(false);
@@ -422,18 +421,50 @@ const SettingsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="theme-toggle">Dark Mode</Label>
-                    <Switch
-                      id="theme-toggle"
-                      checked={theme === 'dark'}
-                      onCheckedChange={toggleTheme}
-                    />
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="theme-toggle" className="text-base font-medium">Dark Mode</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Switch between dark and light themes
+                        </p>
+                      </div>
+                      <Switch
+                        id="theme-toggle"
+                        checked={theme === 'dark'}
+                        onCheckedChange={toggleTheme}
+                      />
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Switch between dark and light themes
-                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className={`border-2 cursor-pointer transition-all ${theme === 'dark' ? 'border-primary' : 'border-transparent'}`} onClick={() => setTheme('dark')}>
+                      <CardHeader className="p-4">
+                        <CardTitle className="text-base flex items-center">
+                          <Moon className="mr-2 h-4 w-4" /> Dark Mode
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <div className="h-20 bg-black rounded-md border border-border flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-primary"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className={`border-2 cursor-pointer transition-all ${theme === 'light' ? 'border-primary' : 'border-transparent'}`} onClick={() => setTheme('light')}>
+                      <CardHeader className="p-4">
+                        <CardTitle className="text-base flex items-center">
+                          <Sun className="mr-2 h-4 w-4" /> Light Mode
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <div className="h-20 bg-white rounded-md border border-border flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-primary"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </CardContent>
             </Card>

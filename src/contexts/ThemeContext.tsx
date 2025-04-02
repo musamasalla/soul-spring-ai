@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type ThemeType = 'dark' | 'light';
@@ -17,6 +16,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // If running in browser, check local storage
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('mindspring-theme');
+      // Check system preference if no saved theme
+      if (!savedTheme) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return prefersDark ? 'dark' : 'light';
+      }
       return (savedTheme as ThemeType) || 'dark';
     }
     return 'dark';
@@ -36,6 +40,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Save to localStorage
     localStorage.setItem('mindspring-theme', theme);
   }, [theme]);
+
+  // Listen for system preference changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only update if user hasn't manually set a preference
+      if (!localStorage.getItem('mindspring-theme')) {
+        setThemeState(e.matches ? 'dark' : 'light');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const toggleTheme = () => {
     setThemeState(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
