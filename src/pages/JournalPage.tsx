@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { Loader2, PlusCircle, Calendar, Search, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, PlusCircle, Calendar, Search, FileText, Trash2, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,39 +9,15 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import { format } from "date-fns";
-
-interface JournalEntry {
-  id: string;
-  title: string;
-  content: string;
-  mood?: string;
-  created_at: string;
-  tags?: string[];
-}
+import { supabase } from "@/integrations/supabase/client";
+import { JournalEntry, NewJournalEntry } from "@/types/journal";
 
 const JournalPage = () => {
   const { user, isPremium, checkUsageLimits } = useAuth();
-  const [entries, setEntries] = useState<JournalEntry[]>([
-    {
-      id: '1',
-      title: 'First Meditation Session',
-      content: 'Today I tried meditation for the first time. It was really challenging to calm my mind, but after about 5 minutes I started to feel more relaxed.',
-      mood: 'calm',
-      created_at: '2023-10-15T10:30:00Z',
-      tags: ['meditation', 'beginner']
-    },
-    {
-      id: '2',
-      title: 'Anxiety Management',
-      content: 'Had a stressful day at work, but used the breathing techniques I learned in the app. They really helped calm me down when I felt overwhelmed.',
-      mood: 'anxious',
-      created_at: '2023-10-12T18:45:00Z',
-      tags: ['anxiety', 'breathing', 'work']
-    }
-  ]);
-  
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [newEntry, setNewEntry] = useState({
@@ -51,6 +26,37 @@ const JournalPage = () => {
     mood: 'neutral',
     tags: ''
   });
+
+  // Fetch journal entries on component mount
+  useEffect(() => {
+    if (user) {
+      fetchJournalEntries();
+    }
+  }, [user]);
+
+  // Fetch journal entries from Supabase
+  const fetchJournalEntries = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        setEntries(data as JournalEntry[]);
+      }
+    } catch (error) {
+      console.error("Error fetching journal entries:", error);
+      toast.error("Failed to load journal entries. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateEntry = async () => {
     // Check usage limits for non-premium users
@@ -65,34 +71,104 @@ const JournalPage = () => {
       }
     }
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Parse tags into an array
+      const tagsArray = newEntry.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag !== '');
       
-      const newEntryObj: JournalEntry = {
-        id: Date.now().toString(),
+      // Create new entry object with required fields
+      const entryData = {
         title: newEntry.title,
         content: newEntry.content,
         mood: newEntry.mood,
-        created_at: new Date().toISOString(),
-        tags: newEntry.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+        tags: tagsArray.length > 0 ? tagsArray : null
       };
       
-      setEntries([newEntryObj, ...entries]);
-      setNewEntry({
-        title: '',
-        content: '',
-        mood: 'neutral',
-        tags: ''
-      });
-      setIsCreating(false);
-      toast.success("Journal entry created successfully!");
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .insert(entryData)
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        // Add the new entry to the local state
+        setEntries([data[0] as JournalEntry, ...entries]);
+        
+        // Reset the form
+        setNewEntry({
+          title: '',
+          content: '',
+          mood: 'neutral',
+          tags: ''
+        });
+        setIsCreating(false);
+        toast.success("Journal entry created successfully!");
+      }
     } catch (error) {
       console.error("Error creating journal entry:", error);
       toast.error("Failed to create journal entry. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  // Toggle favorite status of an entry
+  const handleToggleFavorite = async (entryId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({ is_favorite: !currentStatus })
+        .eq('id', entryId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the local state
+      setEntries(entries.map(entry => 
+        entry.id === entryId 
+          ? { ...entry, is_favorite: !currentStatus } 
+          : entry
+      ));
+      
+      toast.success(currentStatus 
+        ? "Removed from favorites" 
+        : "Added to favorites");
+    } catch (error) {
+      console.error("Error toggling favorite status:", error);
+      toast.error("Failed to update entry. Please try again.");
+    }
+  };
+
+  // Delete a journal entry
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm("Are you sure you want to delete this journal entry? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', entryId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Remove the entry from the local state
+      setEntries(entries.filter(entry => entry.id !== entryId));
+      toast.success("Journal entry deleted successfully");
+    } catch (error) {
+      console.error("Error deleting journal entry:", error);
+      toast.error("Failed to delete entry. Please try again.");
     }
   };
 
@@ -190,9 +266,9 @@ const JournalPage = () => {
               <Button variant="outline" onClick={() => setIsCreating(false)}>Cancel</Button>
               <Button
                 onClick={handleCreateEntry}
-                disabled={!newEntry.title || !newEntry.content || isLoading}
+                disabled={!newEntry.title || !newEntry.content || isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
                   </>
@@ -206,7 +282,11 @@ const JournalPage = () => {
 
         {/* Journal Entries */}
         <div className="space-y-4">
-          {filteredEntries.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredEntries.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
               <h3 className="mt-4 text-lg font-medium">No journal entries found</h3>
@@ -220,16 +300,36 @@ const JournalPage = () => {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle>{entry.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleToggleFavorite(entry.id, entry.is_favorite || false)}
+                      >
+                        <Heart className={`h-4 w-4 ${entry.is_favorite ? 'fill-current text-red-500' : 'text-muted-foreground'}`} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteEntry(entry.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    {entry.mood && (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {entry.mood}
+                      </Badge>
+                    )}
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4 mr-1" />
                       {format(new Date(entry.created_at), 'MMM d, yyyy')}
                     </div>
                   </div>
-                  {entry.mood && (
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {entry.mood}
-                    </Badge>
-                  )}
                 </CardHeader>
                 <CardContent>
                   <p className="text-foreground">{entry.content}</p>

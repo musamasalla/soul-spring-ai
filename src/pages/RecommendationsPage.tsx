@@ -10,7 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import MoodRecommendations from "@/components/MoodRecommendations";
 import MoodChart from "@/components/MoodChart";
 import PageTitle from "@/components/PageTitle";
-import { ArrowLeft, Filter, TrendingUp, Calendar, Sparkles } from "lucide-react";
+import { ArrowLeft, Filter, TrendingUp, Calendar, Sparkles, Dices } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MeditationData } from "@/types/meditation";
 
@@ -324,45 +324,69 @@ export default function RecommendationsPage() {
               
               <TabsContent value="popular">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {popularMeditations.map(meditation => (
-                    <Button 
-                      key={meditation.id}
-                      variant="outline" 
-                      className="h-auto py-3 px-4 flex flex-col items-start text-left"
-                      onClick={() => navigate(`/meditations/${meditation.id}`)}
-                    >
-                      <div className="font-medium mb-1">{meditation.title}</div>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                        {meditation.description}
-                      </p>
-                      <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                        <span>{meditation.category}</span>
-                        <span>{formatDuration(meditation.duration)}</span>
+                  {popularMeditations.length > 0 ? (
+                    popularMeditations.map(meditation => (
+                      <Button 
+                        key={meditation.id}
+                        variant="outline" 
+                        className="h-auto py-3 px-4 flex flex-col items-start text-left"
+                        onClick={() => navigate(`/meditations/${meditation.id}`)}
+                      >
+                        <div className="font-medium mb-1">{meditation.title}</div>
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+                          {meditation.description}
+                        </p>
+                        <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
+                          <span>{meditation.category}</span>
+                          <span>{formatDuration(meditation.duration)}</span>
+                        </div>
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="col-span-2 p-6 text-center">
+                      <div className="mb-3 flex justify-center">
+                        <Dices className="h-12 w-12 text-muted-foreground opacity-50" />
                       </div>
-                    </Button>
-                  ))}
+                      <h3 className="text-lg font-medium mb-1">No meditations available</h3>
+                      <p className="text-sm text-muted-foreground">
+                        We're still adding content to our library. Check back soon for meditation recommendations.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
               
               <TabsContent value="recent">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {recentMeditations.map(meditation => (
-                    <Button 
-                      key={meditation.id}
-                      variant="outline" 
-                      className="h-auto py-3 px-4 flex flex-col items-start text-left"
-                      onClick={() => navigate(`/meditations/${meditation.id}`)}
-                    >
-                      <div className="font-medium mb-1">{meditation.title}</div>
-                      <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-                        {meditation.description}
-                      </p>
-                      <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                        <span>{meditation.category}</span>
-                        <span>{formatDuration(meditation.duration)}</span>
+                  {recentMeditations.length > 0 ? (
+                    recentMeditations.map(meditation => (
+                      <Button 
+                        key={meditation.id}
+                        variant="outline" 
+                        className="h-auto py-3 px-4 flex flex-col items-start text-left"
+                        onClick={() => navigate(`/meditations/${meditation.id}`)}
+                      >
+                        <div className="font-medium mb-1">{meditation.title}</div>
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+                          {meditation.description}
+                        </p>
+                        <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
+                          <span>{meditation.category}</span>
+                          <span>{formatDuration(meditation.duration)}</span>
+                        </div>
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="col-span-2 p-6 text-center">
+                      <div className="mb-3 flex justify-center">
+                        <Dices className="h-12 w-12 text-muted-foreground opacity-50" />
                       </div>
-                    </Button>
-                  ))}
+                      <h3 className="text-lg font-medium mb-1">No meditations available</h3>
+                      <p className="text-sm text-muted-foreground">
+                        We're still adding content to our library. Check back soon for meditation recommendations.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

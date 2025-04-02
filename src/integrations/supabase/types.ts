@@ -9,6 +9,391 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      meditations: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          audio_url: string
+          cover_image: string | null
+          duration: number | null
+          instructor: string | null
+          category: string | null
+          tags: string[] | null
+          is_premium: boolean | null
+          play_count: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          audio_url: string
+          cover_image?: string | null
+          duration?: number | null
+          instructor?: string | null
+          category?: string | null
+          tags?: string[] | null
+          is_premium?: boolean | null
+          play_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          audio_url?: string
+          cover_image?: string | null
+          duration?: number | null
+          instructor?: string | null
+          category?: string | null
+          tags?: string[] | null
+          is_premium?: boolean | null
+          play_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          content: string
+          mood: string | null
+          tags: string[] | null
+          is_favorite: boolean | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          title: string
+          content: string
+          mood?: string | null
+          tags?: string[] | null
+          is_favorite?: boolean | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          content?: string
+          mood?: string | null
+          tags?: string[] | null
+          is_favorite?: boolean | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      journal_analytics: {
+        Row: {
+          id: string
+          user_id: string
+          entry_count: number
+          mood_distribution: Json | null
+          common_tags: Json | null
+          last_updated: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          entry_count?: number
+          mood_distribution?: Json | null
+          common_tags?: Json | null
+          last_updated?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          entry_count?: number
+          mood_distribution?: Json | null
+          common_tags?: Json | null
+          last_updated?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      community_posts: {
+        Row: {
+          id: string
+          user_id: string
+          content: string
+          tags: string[] | null
+          likes_count: number
+          comments_count: number
+          is_premium_only: boolean
+          is_pinned: boolean
+          is_featured: boolean
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          content: string
+          tags?: string[] | null
+          likes_count?: number
+          comments_count?: number
+          is_premium_only?: boolean
+          is_pinned?: boolean
+          is_featured?: boolean
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          content?: string
+          tags?: string[] | null
+          likes_count?: number
+          comments_count?: number
+          is_premium_only?: boolean
+          is_pinned?: boolean
+          is_featured?: boolean
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      post_likes: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      post_comments: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          content: string
+          likes_count: number
+          parent_comment_id: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          content: string
+          likes_count?: number
+          parent_comment_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          content?: string
+          likes_count?: number
+          parent_comment_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      comment_likes: {
+        Row: {
+          id: string
+          comment_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      community_categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          icon: string | null
+          color: string | null
+          is_premium_only: boolean
+          sort_order: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          icon?: string | null
+          color?: string | null
+          is_premium_only?: boolean
+          sort_order?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          icon?: string | null
+          color?: string | null
+          is_premium_only?: boolean
+          sort_order?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      post_categories: {
+        Row: {
+          id: string
+          post_id: string
+          category_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          category_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          category_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_categories_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "community_categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       mood_entries: {
         Row: {
           created_at: string
@@ -74,6 +459,84 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_favorites: {
+        Row: {
+          id: string
+          user_id: string
+          meditation_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          meditation_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          meditation_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_meditation_id_fkey"
+            columns: ["meditation_id"]
+            isOneToOne: false
+            referencedRelation: "meditations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      meditation_history: {
+        Row: {
+          id: string
+          user_id: string
+          meditation_id: string
+          completed: boolean | null
+          date: string | null
+          duration_seconds: number | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          meditation_id: string
+          completed?: boolean | null
+          date?: string | null
+          duration_seconds?: number | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          meditation_id?: string
+          completed?: boolean | null
+          date?: string | null
+          duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meditation_history_meditation_id_fkey"
+            columns: ["meditation_id"]
+            isOneToOne: false
+            referencedRelation: "meditations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meditation_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
