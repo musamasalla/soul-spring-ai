@@ -1,10 +1,10 @@
-
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import FeatureCard from "@/components/FeatureCard";
 import TestimonialCard from "@/components/TestimonialCard";
 import PricingCard from "@/components/PricingCard";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/Logo";
 import { Heart, MessageSquare, Sparkles, Users, BookOpen, Brain } from "lucide-react";
 
 const Index = () => {
@@ -17,11 +17,14 @@ const Index = () => {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="py-16 px-6 text-center">
+          <div className="flex justify-center mb-8">
+            <Logo size="xl" variant="colored" useSvg={true} />
+          </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fade-in">
             Your Mental Health Journey <span className="text-primary">Enhanced</span>
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl max-w-3xl mx-auto mb-10">
-            Discover how MindSpring AI helps you navigate your mental health journey with personalized guidance and support
+            Discover how Tranquil Mind helps you navigate your mental health journey with personalized guidance and support
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -95,14 +98,14 @@ const Index = () => {
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-center mb-4">Community Stories</h2>
             <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-12">
-              See how MindSpring is helping people on their mental health journey
+              See how Tranquil Mind is helping people on their mental health journey
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <TestimonialCard 
-                quote="MindSpring has transformed how I deal with anxiety. The AI therapy sessions feel surprisingly personal and helpful."
+                quote="Tranquil Mind has transformed how I deal with anxiety. The AI therapy sessions feel surprisingly personal and helpful."
                 name="Sarah M."
-                title="Using MindSpring for 6 months"
+                title="Using Tranquil Mind for 6 months"
                 initials="SM"
               />
               <TestimonialCard 
@@ -198,7 +201,7 @@ const Index = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h3 className="text-xl font-bold">Mind<span className="text-primary">Spring</span></h3>
+              <h3 className="text-xl font-bold">Tranquil<span className="text-primary">Mind</span></h3>
               <p className="text-sm text-muted-foreground">AI-powered mental wellness</p>
             </div>
             <div className="flex flex-wrap gap-4 justify-center">
@@ -210,7 +213,7 @@ const Index = () => {
             </div>
           </div>
           <div className="mt-8 pt-4 border-t border-white/10 text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} MindSpring AI. All rights reserved.
+            © {new Date().getFullYear()} Tranquil Mind AI. All rights reserved.
           </div>
         </div>
       </footer>

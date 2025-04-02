@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, RefreshCw, Mic, MicOff, Volume2, VolumeX, Clock, PlusCircle, Save, Calendar, FileText, ChevronUp, ChevronDown } from "lucide-react";
+import { Send, RefreshCw, Mic, MicOff, Volume2, VolumeX, Clock, PlusCircle, Save, Calendar, FileText, ChevronUp, ChevronDown, Heart, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,8 @@ import { useSpeechToText } from "@/utils/speechToText";
 import { useTextToSpeech } from "@/utils/textToSpeech";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import EmotionDetector, { EmotionData } from "./EmotionDetector";
+import TherapyTechniques, { TechniqueData } from "./TherapyTechniques";
 import "./EnhancedAIChat.css";
 
 interface Message {
@@ -125,11 +127,12 @@ const therapeuticReflections = {
 
 interface TherapySessionProps {
   sessionId?: string | null;
-  currentStage: string;
+  currentStage?: 'opening' | 'assessment' | 'intervention' | 'closing';
   onStageUpdate?: (stage: string) => void;
-  sessionTopics: string[];
+  sessionTopics?: string[];
   completionPercentage?: number;
   onCompletionUpdate?: (percentage: number) => void;
+  onNewMessage?: (message: { role: string; content: string }) => void;
 }
 
 const EnhancedAIChat = ({
@@ -138,7 +141,8 @@ const EnhancedAIChat = ({
   onStageUpdate,
   sessionTopics = [],
   completionPercentage = 0,
-  onCompletionUpdate
+  onCompletionUpdate,
+  onNewMessage
 }: TherapySessionProps = {}) => {
   const { user, isPremium } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
@@ -163,6 +167,11 @@ const EnhancedAIChat = ({
   const [showReflectionPrompts, setShowReflectionPrompts] = useState(false);
   const [stageCompleted, setStageCompleted] = useState(false);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const [emotionData, setEmotionData] = useState<EmotionData | null>(null);
+  const [recommendedTechniques, setRecommendedTechniques] = useState<string[]>([]);
+  const [showEmotionPanel, setShowEmotionPanel] = useState(false);
+  const [showTechniquesPanel, setShowTechniquesPanel] = useState(false);
+  const [showCrisisResources, setShowCrisisResources] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -593,7 +602,7 @@ const EnhancedAIChat = ({
     const userMessage = input.trim();
     setInput("");
     setLoading(true);
-    
+
     // Add user message immediately
     const userMessageObj: Message = {
       role: "user",
@@ -602,6 +611,11 @@ const EnhancedAIChat = ({
     };
     
     setMessages(prev => [...prev, userMessageObj]);
+    
+    // Notify parent about the new message
+    if (onNewMessage) {
+      onNewMessage({ role: "user", content: userMessage });
+    }
     
     // Add AI thinking indicator
     setIsTyping(true);
@@ -616,12 +630,17 @@ const EnhancedAIChat = ({
       if (response) {
         // Add AI response
         const aiMessageObj: Message = {
-          role: "assistant",
+        role: "assistant",
           content: response,
           timestamp: new Date()
         };
         
         setMessages(prev => [...prev.filter(m => !m.isThinking), aiMessageObj]);
+        
+        // Notify parent about the new AI message
+        if (onNewMessage) {
+          onNewMessage({ role: "assistant", content: response });
+        }
         
         // If it's a new session, try to generate a title from the first exchange
         if (!activeSession && messages.length === 2) {
@@ -683,300 +702,321 @@ const EnhancedAIChat = ({
     }
   };
 
+  // Handle emotion detection
+  const handleEmotionDetected = (emotion: EmotionData) => {
+    setEmotionData(emotion);
+    
+    // If negative emotions are high, suggest showing crisis resources
+    if (emotion.sentiment < 30 && 
+        (emotion.primaryEmotion === 'sad' || 
+         emotion.primaryEmotion === 'anxious' || 
+         emotion.emotionalTrend === 'declining')) {
+      setShowCrisisResources(true);
+    }
+    
+    // Set recommended techniques
+    if (emotion.recommendedTechniques) {
+      setRecommendedTechniques(emotion.recommendedTechniques);
+    }
+  };
+  
+  // Handle technique selection
+  const handleTechniqueSelected = (technique: TechniqueData) => {
+    // Add a message from the assistant explaining the technique
+    const techniqueMessage = {
+      role: "assistant" as const,
+      content: `I think the **${technique.name}** technique might be helpful for you right now. 
+      
+${technique.description}
+
+It only takes about ${technique.duration} minutes. Would you like me to guide you through it?`,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, techniqueMessage]);
+    scrollToBottom();
+  };
+
   return (
-    <div className="h-full flex flex-col">
-      <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Set up your therapy session</DialogTitle>
-            <DialogDescription>
-              Customize your session to make it more effective and personalized.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="session-title">Session Title</Label>
-              <Input
-                id="session-title"
-                value={sessionTitle}
-                onChange={(e) => setSessionTitle(e.target.value)}
-                placeholder="e.g., Anxiety Discussion"
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label>Topics (Optional)</Label>
-              <div className="flex flex-wrap gap-2">
-                {therapyTopics.map((topic) => (
-                  <Badge 
-                    key={topic.name}
-                    variant={selectedTopics.includes(topic.name) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => {
-                      if (selectedTopics.includes(topic.name)) {
-                        setSelectedTopics(selectedTopics.filter(t => t !== topic.name));
-                      } else {
-                        setSelectedTopics([...selectedTopics, topic.name]);
-                      }
-                    }}
-                  >
-                    {topic.name}
-                  </Badge>
-                ))}
+    <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex-1 rounded-lg shadow-sm">
+        {/* Chat Header */}
+        <div className="border rounded-t-lg bg-card p-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
+                <AvatarImage src="/ai-therapist-avatar.png" alt="AI Therapist" />
+              </Avatar>
+              <div>
+                <h3 className="font-semibold">AI Therapist</h3>
+                <p className="text-xs text-muted-foreground">
+                  {sessionTitle || "New Session"}
+                </p>
               </div>
             </div>
             
-            <div className="grid gap-2">
-              <Label htmlFor="session-goal">What's your goal for this session? (Optional)</Label>
-              <Textarea
-                id="session-goal"
-                value={sessionGoal}
-                onChange={(e) => setSessionGoal(e.target.value)}
-                placeholder="e.g., Understand why I feel anxious at work"
-                rows={2}
-              />
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setShowEmotionPanel(!showEmotionPanel)}
+                      className={showEmotionPanel ? "text-primary" : ""}
+                    >
+                      <Heart className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Emotion Analysis</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                      onClick={() => setShowTechniquesPanel(!showTechniquesPanel)}
+                      className={showTechniquesPanel ? "text-primary" : ""}
+                    >
+                      <Brain className="h-5 w-5" />
+                  </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Therapy Techniques</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={toggleListening}
+                    className={isListening ? "voice-active text-primary" : ""}
+                  >
+                    {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isListening ? "Stop Listening" : "Start Listening"}
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+          <Button 
+                    size="icon"
+                    variant="outline"
+                    onClick={toggleSpeaking}
+                    className={autoSpeak ? "text-primary" : ""}
+                  >
+                    {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {autoSpeak ? "Disable Auto-Speak" : "Enable Auto-Speak"}
+                </TooltipContent>
+              </Tooltip>
+              
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                    size="icon"
+                  variant="outline"
+                    onClick={createNewSession}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                  New conversation
+              </TooltipContent>
+            </Tooltip>
             </div>
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSetupDialog(false)}>Skip</Button>
-            <Button onClick={handleSessionSetup}>Start Session</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Chat messages container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Stage transition banner */}
-        {currentStage && (
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
-            <h3 className="text-sm font-medium flex items-center text-primary">
-              {stageTransitionPrompts[currentStage as keyof typeof stageTransitionPrompts]?.title || 'Therapy Session'}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {currentStage === 'opening' && "Let's begin by understanding what's on your mind today."}
-              {currentStage === 'assessment' && "Now let's explore your situation more deeply to understand the context."}
-              {currentStage === 'intervention' && "Let's work on some strategies and perspectives that might help."}
-              {currentStage === 'closing' && "Let's reflect on what we've discussed and identify next steps."}
-            </p>
-          </div>
-        )}
+        </div>
         
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {message.role === "assistant" && (
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Stage transition banner */}
+          {currentStage && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
+              <h3 className="text-sm font-medium flex items-center text-primary">
+                {stageTransitionPrompts[currentStage as keyof typeof stageTransitionPrompts]?.title || 'Therapy Session'}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                {currentStage === 'opening' && "Let's begin by understanding what's on your mind today."}
+                {currentStage === 'assessment' && "Now let's explore your situation more deeply to understand the context."}
+                {currentStage === 'intervention' && "Let's work on some strategies and perspectives that might help."}
+                {currentStage === 'closing' && "Let's reflect on what we've discussed and identify next steps."}
+              </p>
+            </div>
+          )}
+          
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {message.role === "assistant" && (
+                <Avatar className="h-8 w-8 mr-2">
+                  <AvatarImage src="/ai-avatar.png" alt="AI" />
+                  <AvatarFallback className="bg-primary/20 text-primary">AI</AvatarFallback>
+                </Avatar>
+              )}
+              
+              <div
+                className={`max-w-[80%] p-3 rounded-lg ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground chat-bubble-user"
+                    : message.isTransition 
+                      ? "bg-primary/10 border border-primary/20 chat-bubble-assistant" 
+                      : "bg-secondary chat-bubble-assistant"
+                }`}
+              >
+                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                <div className="text-xs opacity-70 text-right mt-1">
+                  {message.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+              
+              {message.role === "user" && (
+                <Avatar className="h-8 w-8 ml-2">
+                  <AvatarImage src={user?.avatarUrl || ""} alt="User" />
+                  <AvatarFallback className="bg-primary/10">
+                    {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          ))}
+          
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="flex justify-start">
               <Avatar className="h-8 w-8 mr-2">
                 <AvatarImage src="/ai-avatar.png" alt="AI" />
                 <AvatarFallback className="bg-primary/20 text-primary">AI</AvatarFallback>
               </Avatar>
-            )}
-            
-            <div
-              className={`max-w-[80%] p-3 rounded-lg ${
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground chat-bubble-user"
-                  : message.isTransition 
-                    ? "bg-primary/10 border border-primary/20 chat-bubble-assistant" 
-                    : "bg-secondary chat-bubble-assistant"
-              }`}
-            >
-              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-              <div className="text-xs opacity-70 text-right mt-1">
-                {message.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-            
-            {message.role === "user" && (
-              <Avatar className="h-8 w-8 ml-2">
-                <AvatarImage src={user?.avatarUrl || ""} alt="User" />
-                <AvatarFallback className="bg-primary/10">
-                  {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-        ))}
-        
-        {/* Typing indicator */}
-        {isTyping && (
-          <div className="flex justify-start">
-            <Avatar className="h-8 w-8 mr-2">
-              <AvatarImage src="/ai-avatar.png" alt="AI" />
-              <AvatarFallback className="bg-primary/20 text-primary">AI</AvatarFallback>
-            </Avatar>
-            <div className="bg-secondary p-3 rounded-lg chat-bubble-assistant">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {chatError && (
-          <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm text-center">
-            {chatError}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-2"
-              onClick={() => setChatError(null)}
-            >
-              Dismiss
-            </Button>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Suggested prompts */}
-      {suggestedPrompts.length > 0 && (
-        <div className="px-4 py-2 border-t border-border/40 bg-secondary/30">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-medium text-muted-foreground">Suggested prompts</h4>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-5 w-5" 
-              onClick={() => setShowReflectionPrompts(!showReflectionPrompts)}
-            >
-              {showReflectionPrompts ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-          </div>
-          
-          {showReflectionPrompts && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {suggestedPrompts.map((prompt, index) => (
-                <Button 
-                  key={index} 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs bg-background/50 whitespace-normal h-auto py-1 justify-start"
-                  onClick={() => usePrompt(prompt)}
-                >
-                  {prompt}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Chat controls */}
-      <div className="border-t p-4 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-start gap-2">
-          <div className="relative flex-1">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message..."
-              className="resize-none pr-12"
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            
-            <div className="absolute right-2 bottom-2">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={toggleListening}
-                className={isListening ? "voice-active text-primary" : ""}
-              >
-                {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-          
-          <Button size="icon" disabled={!input.trim() || loading} onClick={handleSend}>
-            <Send className="h-4 w-4" />
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button size="icon" variant="outline">
-                <Save className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3" side="top">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Save Conversation</h4>
-                <Input 
-                  value={sessionTitle} 
-                  onChange={(e) => setSessionTitle(e.target.value)}
-                  placeholder="Session Title"
-                  className="h-8 text-sm"
-                />
-                <div className="flex justify-end mt-2">
-                  <Button size="sm" onClick={saveSession}>Save</Button>
+              <div className="bg-secondary p-3 rounded-lg chat-bubble-assistant">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
                 </div>
               </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="icon" 
-                variant="outline"
-                onClick={() => setAutoSpeak(!autoSpeak)}
-                className={autoSpeak ? "text-primary" : ""}
-              >
-                {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {autoSpeak ? "Turn off auto-speak" : "Turn on auto-speak"}
-            </TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="icon" 
-                variant="outline"
-                onClick={createNewSession}
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              New conversation
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        
-        <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-          <div className="flex items-center">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>{currentStage === 'opening' ? 'Beginning' : currentStage === 'assessment' || currentStage === 'intervention' ? 'Main Discussion' : 'Wrapping Up'}</span>
-          </div>
-          
-          {selectedTopics.length > 0 && (
-            <div className="flex gap-1">
-              {selectedTopics.slice(0, 3).map(topic => (
-                <Badge key={topic} variant="outline" className="text-xs h-5 px-1">
-                  {topic}
-                </Badge>
-              ))}
-              {selectedTopics.length > 3 && (
-                <Badge variant="outline" className="text-xs h-5 px-1">
-                  +{selectedTopics.length - 3}
-                </Badge>
-              )}
             </div>
           )}
+          
+          {chatError && (
+            <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm text-center">
+              {chatError}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-2"
+                onClick={() => setChatError(null)}
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
         </div>
+        
+        {/* Crisis Resources Dialog */}
+        <Dialog open={showCrisisResources} onOpenChange={setShowCrisisResources}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Need immediate support?</DialogTitle>
+              <DialogDescription>
+                If you're having thoughts of harming yourself or experiencing a mental health crisis, please reach out for help immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="border-l-4 border-primary p-3 bg-primary/10 rounded">
+                <h4 className="font-semibold">Crisis Text Line</h4>
+                <p className="text-sm">Text HOME to 741741 to connect with a Crisis Counselor</p>
+              </div>
+              
+              <div className="border-l-4 border-primary p-3 bg-primary/10 rounded">
+                <h4 className="font-semibold">National Suicide Prevention Lifeline</h4>
+                <p className="text-sm">Call 988 or 1-800-273-8255 (available 24/7)</p>
+              </div>
+              
+              <div className="border-l-4 border-primary p-3 bg-primary/10 rounded">
+                <h4 className="font-semibold">Emergency Services</h4>
+                <p className="text-sm">Call 911 (US) or your local emergency number</p>
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                Note: This AI is not a replacement for professional mental health support. If you're in crisis, please use one of the resources above.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowCrisisResources(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Suggested prompts */}
+        {suggestedPrompts.length > 0 && (
+          <div className="px-4 py-2 border-t border-border/40 bg-secondary/30">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-xs font-medium text-muted-foreground">Suggested prompts</h4>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5" 
+                onClick={() => setShowReflectionPrompts(!showReflectionPrompts)}
+              >
+                {showReflectionPrompts ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+            </div>
+            
+            {showReflectionPrompts && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {suggestedPrompts.map((prompt, index) => (
+                  <Button 
+                    key={index} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs bg-background/50 whitespace-normal h-auto py-1 justify-start"
+                    onClick={() => usePrompt(prompt)}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* Side panels */}
+      <div className="w-full md:w-[350px] space-y-4">
+        {showEmotionPanel && (
+          <EmotionDetector 
+            messages={messages} 
+            onEmotionDetected={handleEmotionDetected}
+          />
+        )}
+        
+        {showTechniquesPanel && (
+          <TherapyTechniques 
+            emotionData={emotionData || undefined}
+            recommendedTechniques={recommendedTechniques}
+            onTechniqueSelected={handleTechniqueSelected}
+          />
+        )}
       </div>
     </div>
   );

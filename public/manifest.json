@@ -1,0 +1,26 @@
+{
+  "name": "Tranquil Mind - Mental Wellness App",
+  "short_name": "Tranquil Mind",
+  "description": "A mental wellness application for meditation and mood tracking",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "cropped_favicon.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "cropped_favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "cropped_favicon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+} 

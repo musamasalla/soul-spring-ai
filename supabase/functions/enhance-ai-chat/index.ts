@@ -491,7 +491,7 @@ serve(async (req) => {
     
     // Return the enhanced response
     return new Response(JSON.stringify(enhancedResponse), {
-      status: 200,
+        status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
@@ -506,7 +506,7 @@ serve(async (req) => {
       error: 'Failed to process request',
       details: error.message
     }), {
-      status: 500,
+        status: 500,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'

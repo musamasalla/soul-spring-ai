@@ -1,19 +1,28 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { BarChart, CalendarDays, MessageSquare, Brain, User, Settings, LogOut } from "lucide-react";
+import { BarChart, CalendarDays, MessageSquare, Brain, User, Settings, LogOut, Sparkles } from "lucide-react";
 import EnhancedAIChat from "@/components/EnhancedAIChat";
 import MoodTracker from "@/components/MoodTracker";
+import MoodRecommendations from "@/components/MoodRecommendations";
 import { Button } from "@/components/ui/button";
+import { useMoodStore } from "@/stores/moodStore";
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const { currentMood, moods, fetchMoods } = useMoodStore();
+
+  // Fetch user moods if needed
+  useEffect(() => {
+    if (user && moods.length === 0) {
+      fetchMoods(user.id);
+    }
+  }, [user, moods.length, fetchMoods]);
 
   const handleLogout = () => {
     logout();
@@ -71,12 +80,32 @@ const DashboardPage = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <BarChart className="h-5 w-5 text-primary mr-2" />
-                      Mood Trends
+                      Mood Tracker
                     </CardTitle>
-                    <CardDescription>Your emotional wellness over time</CardDescription>
+                    <CardDescription>How are you feeling today?</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <MoodTracker />
+                    <MoodTracker 
+                      userId={user?.id}
+                      compact={true}
+                    />
+                  </CardContent>
+                </Card>
+                
+                <Card className="glass-card card-hover">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Sparkles className="h-5 w-5 text-primary mr-2" />
+                      Recommended For You
+                    </CardTitle>
+                    <CardDescription>Personalized activities based on your mood</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MoodRecommendations
+                      currentMood={currentMood}
+                      userId={user?.id}
+                      compact={true}
+                    />
                   </CardContent>
                 </Card>
                 
@@ -109,32 +138,52 @@ const DashboardPage = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="glass-card card-hover">
+                <Card className="glass-card card-hover md:col-span-3 lg:col-span-3">
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <CalendarDays className="h-5 w-5 text-primary mr-2" />
-                      Upcoming
+                      Upcoming Activities
                     </CardTitle>
-                    <CardDescription>Scheduled activities</CardDescription>
+                    <CardDescription>Scheduled sessions and recommended practices</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-2">
-                      <li className="flex justify-between items-center">
-                        <span>Guided Meditation</span>
-                        <span className="text-xs text-muted-foreground">Today, 8:00 PM</span>
-                      </li>
-                      <li className="flex justify-between items-center">
-                        <span>Weekly Reflection</span>
-                        <span className="text-xs text-muted-foreground">Tomorrow, 10:00 AM</span>
-                      </li>
-                    </ul>
-                    <Button 
-                      className="w-full mt-4" 
-                      variant="outline"
-                      onClick={() => navigate('/meditation')}
-                    >
-                      Browse Meditations
-                    </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Today</h3>
+                        <ul className="space-y-2">
+                          <li className="flex justify-between items-center p-2 border rounded-md">
+                            <span>Guided Meditation</span>
+                            <span className="text-xs text-muted-foreground">8:00 PM</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Tomorrow</h3>
+                        <ul className="space-y-2">
+                          <li className="flex justify-between items-center p-2 border rounded-md">
+                            <span>Weekly Reflection</span>
+                            <span className="text-xs text-muted-foreground">10:00 AM</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Suggested</h3>
+                        <Button 
+                          className="w-full mb-2" 
+                          variant="outline"
+                          onClick={() => navigate('/meditation')}
+                        >
+                          Browse Meditations
+                        </Button>
+                        <Button 
+                          className="w-full" 
+                          variant="outline"
+                          onClick={() => navigate('/recommendations')}
+                        >
+                          View All Recommendations
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

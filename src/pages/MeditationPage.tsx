@@ -169,9 +169,9 @@ const MeditationCard = ({ meditation, onClick }: {
         {meditation.category && (
           Array.isArray(meditation.category) 
             ? meditation.category.map((tag, i) => (
-                <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
-                  {tag}
-                </span>
+          <span key={i} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+            {tag}
+          </span>
               ))
             : (
               <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
@@ -328,12 +328,12 @@ const MeditationPage = () => {
                         description: "Great job completing your meditation session!",
                       });
                     }}
-                  />
-                </div>
+                      />
+                    </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {SAMPLE_MEDITATIONS.map((meditation) => (
-                    <MeditationCard
+                  <MeditationCard
                       key={meditation.id}
                       meditation={meditation}
                       onClick={() => handleMeditationSelect(meditation)}
@@ -427,9 +427,9 @@ const MeditationPage = () => {
                                     {category}
                                   </Badge>
                                 ))}
-                              </div>
-                            </div>
-                            
+                    </div>
+                  </div>
+                  
                             <div>
                               <h3 className="text-sm font-medium mb-2">Duration</h3>
                               <div className="space-y-1">
@@ -451,7 +451,7 @@ const MeditationPage = () => {
                                 ))}
                               </div>
                             </div>
-                          </div>
+                    </div>
                         )}
                       </div>
                     </div>
@@ -470,7 +470,7 @@ const MeditationPage = () => {
                         <Button variant="outline" className="h-full min-h-[120px] text-muted-foreground">
                           <PlusCircle className="h-10 w-10 mb-2" />
                           <span>Explore More</span>
-                        </Button>
+                      </Button>
                       </>
                     ) : (
                       <div className="col-span-3 py-8 text-center">
@@ -479,7 +479,7 @@ const MeditationPage = () => {
                           <h3 className="text-xl font-medium">No meditations match your filters</h3>
                         </div>
                         <Button variant="outline" onClick={clearFilters}>Clear all filters</Button>
-                      </div>
+                    </div>
                     )}
                   </div>
                 </>

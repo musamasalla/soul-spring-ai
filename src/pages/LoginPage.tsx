@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -10,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
+import Logo from "@/components/Logo";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
@@ -54,6 +54,9 @@ const LoginPage = () => {
       <main className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md glass-card">
           <CardHeader>
+            <div className="flex flex-col items-center mb-6">
+              <Logo size="lg" variant="colored" useSvg={true} />
+            </div>
             <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
             <CardDescription>Enter your credentials to access your account</CardDescription>
           </CardHeader>
