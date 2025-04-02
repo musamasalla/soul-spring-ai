@@ -41,33 +41,41 @@ export default function MeditationHistory({ userId = "default-user" }: Meditatio
   const [weeklyActivity, setWeeklyActivity] = useState<{ day: string; minutes: number }[]>([]);
 
   useEffect(() => {
-    // Make sure sample data is initialized
-    initializeSampleData();
+    const loadData = async () => {
+      try {
+        // Make sure sample data is initialized
+        await initializeSampleData();
+        
+        // Get all sessions
+        const allSessions = getSessions();
+        setSessions(allSessions);
+        
+        // Get sessions with mood data
+        const allSessionsWithMood = await getSessionsWithMood();
+        setSessionsWithMood(allSessionsWithMood);
+        
+        // Calculate streak
+        const currentStreak = calculateStreak();
+        setStreak(currentStreak);
+        
+        // Calculate total minutes
+        const minutes = getTotalMeditationMinutes();
+        setTotalMinutes(minutes);
+        
+        // Get category breakdown
+        const categories = getCategoryBreakdown();
+        const categoryData = Object.entries(categories).map(([name, value]) => ({ name, value }));
+        setCategoryBreakdown(categoryData);
+        
+        // Calculate weekly activity (last 7 days)
+        const weeklyData = calculateWeeklyActivity(allSessions);
+        setWeeklyActivity(weeklyData);
+      } catch (error) {
+        console.error("Error loading meditation history data:", error);
+      }
+    };
     
-    // Get all sessions
-    const allSessions = getSessions();
-    setSessions(allSessions);
-    
-    // Get sessions with mood data
-    const allSessionsWithMood = getSessionsWithMood();
-    setSessionsWithMood(allSessionsWithMood);
-    
-    // Calculate streak
-    const currentStreak = calculateStreak();
-    setStreak(currentStreak);
-    
-    // Calculate total minutes
-    const minutes = getTotalMeditationMinutes();
-    setTotalMinutes(minutes);
-    
-    // Get category breakdown
-    const categories = getCategoryBreakdown();
-    const categoryData = Object.entries(categories).map(([name, value]) => ({ name, value }));
-    setCategoryBreakdown(categoryData);
-    
-    // Calculate weekly activity (last 7 days)
-    const weeklyData = calculateWeeklyActivity(allSessions);
-    setWeeklyActivity(weeklyData);
+    loadData();
   }, []);
 
   // Calculate minutes meditated per day for the last 7 days

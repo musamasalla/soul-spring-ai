@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MeditationData } from "@/types/meditation";
+import { saveMoodRecord } from "@/services/sessionService";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 // Mood options with emojis
 const MOOD_OPTIONS = [
@@ -17,7 +20,7 @@ const MOOD_OPTIONS = [
 ];
 
 interface MoodTrackerProps {
-  meditation: MeditationData;
+  meditation?: MeditationData;  // Make meditation optional
   onSave: (mood: string, notes: string) => void;
   onSkip: () => void;
 }
@@ -25,10 +28,35 @@ interface MoodTrackerProps {
 export default function MoodTracker({ meditation, onSave, onSkip }: MoodTrackerProps) {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    if (selectedMood) {
+  const handleSave = async () => {
+    if (!selectedMood) return;
+    
+    setIsSaving(true);
+    
+    try {
+      // If we have a meditation, save that with the mood
+      if (meditation) {
+        // Create a session ID if not provided
+        const sessionId = `manual-${Date.now()}`;
+        await saveMoodRecord(
+          sessionId,
+          meditation.id,
+          meditation.title,
+          selectedMood,
+          notes
+        );
+        toast.success("Mood tracked successfully");
+      }
+      
+      // Call the parent component's onSave function
       onSave(selectedMood, notes);
+    } catch (error) {
+      console.error("Error saving mood:", error);
+      toast.error("Error saving mood. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -37,7 +65,7 @@ export default function MoodTracker({ meditation, onSave, onSkip }: MoodTrackerP
       <CardHeader>
         <CardTitle>How do you feel now?</CardTitle>
         <CardDescription>
-          Track your mood after completing "{meditation.title}"
+          {meditation ? `Track your mood after completing "${meditation.title}"` : "Track your mood after your session"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -69,14 +97,21 @@ export default function MoodTracker({ meditation, onSave, onSkip }: MoodTrackerP
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={onSkip}>
+        <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
           Skip
         </Button>
         <Button 
           onClick={handleSave} 
-          disabled={!selectedMood}
+          disabled={!selectedMood || isSaving}
         >
-          Save
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save"
+          )}
         </Button>
       </CardFooter>
     </Card>

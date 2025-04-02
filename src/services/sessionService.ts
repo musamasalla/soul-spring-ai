@@ -1,4 +1,5 @@
 import { MeditationData, MeditationSession } from "@/types/meditation";
+import { supabase } from "@/integrations/supabase/client";
 
 // Interface for storing mood records
 export interface MoodRecord {
@@ -8,6 +9,14 @@ export interface MoodRecord {
   date: string;
   mood: string;
   notes?: string;
+}
+
+// Interface for the factors JSON object
+interface MoodFactors {
+  session_id?: string;
+  meditation_id?: string;
+  meditation_title?: string;
+  [key: string]: any;
 }
 
 // Save a completed meditation session
@@ -35,26 +44,81 @@ export function saveMeditationSession(meditation: MeditationData, completed: boo
 }
 
 // Save a mood record for a meditation session
-export function saveMoodRecord(sessionId: string, meditationId: string, meditationTitle: string, mood: string, notes?: string): MoodRecord {
-  const moodRecord: MoodRecord = {
-    sessionId,
-    meditationId,
-    meditationTitle,
+export async function saveMoodRecord(
+  sessionId: string, 
+  meditationId: string, 
+  meditationTitle: string, 
+  mood: string, 
+  notes?: string
+): Promise<MoodRecord | null> {
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    console.error('Cannot save mood record: No authenticated user');
+    return null;
+  }
+  
+  const moodRecord = {
+    user_id: user.id,
+    mood: mood,
+    notes: notes || null,
     date: new Date().toISOString(),
-    mood,
-    notes
+    factors: {
+      session_id: sessionId,
+      meditation_id: meditationId,
+      meditation_title: meditationTitle
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
   
-  // Get existing mood records
-  const moodRecords = getMoodRecords();
+  // Save to Supabase
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .insert(moodRecord)
+    .select()
+    .single();
   
-  // Add new record
-  moodRecords.push(moodRecord);
+  if (error) {
+    console.error('Error saving mood record:', error);
+    
+    // Fallback to localStorage if Supabase fails
+    const localMoodRecord: MoodRecord = {
+      sessionId,
+      meditationId,
+      meditationTitle,
+      date: new Date().toISOString(),
+      mood,
+      notes
+    };
+    
+    // Get existing mood records
+    const moodRecords = await getMoodRecords();
+    
+    // Add new record
+    moodRecords.push(localMoodRecord);
+    
+    // Save to localStorage
+    localStorage.setItem('meditation_moods', JSON.stringify(moodRecords));
+    
+    return localMoodRecord;
+  }
   
-  // Save to localStorage
-  localStorage.setItem('meditation_moods', JSON.stringify(moodRecords));
+  // Extract factors with type safety
+  const factors = data.factors as MoodFactors || {};
   
-  return moodRecord;
+  // Format to match MoodRecord interface
+  const formattedRecord: MoodRecord = {
+    sessionId: factors.session_id || sessionId,
+    meditationId: factors.meditation_id || meditationId,
+    meditationTitle: factors.meditation_title || meditationTitle,
+    date: data.date,
+    mood: data.mood,
+    notes: data.notes || undefined
+  };
+  
+  return formattedRecord;
 }
 
 // Get all meditation sessions
@@ -71,22 +135,90 @@ export function getUserSessions(userId: string): MeditationSession[] {
 }
 
 // Get all mood records
-export function getMoodRecords(): MoodRecord[] {
-  const records = localStorage.getItem('meditation_moods');
-  return records ? JSON.parse(records) : [];
+export async function getMoodRecords(): Promise<MoodRecord[]> {
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.warn('No authenticated user for mood records');
+      const records = localStorage.getItem('meditation_moods');
+      return records ? JSON.parse(records) : [];
+    }
+    
+    // Get records from Supabase
+    const { data, error } = await supabase
+      .from('mood_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching mood records:', error);
+      // Fallback to localStorage
+      const records = localStorage.getItem('meditation_moods');
+      return records ? JSON.parse(records) : [];
+    }
+    
+    // Convert Supabase format to MoodRecord format
+    return data.map(entry => {
+      const factors = entry.factors as MoodFactors || {};
+      return {
+        sessionId: factors.session_id || '',
+        meditationId: factors.meditation_id || '',
+        meditationTitle: factors.meditation_title || '',
+        date: entry.date,
+        mood: entry.mood,
+        notes: entry.notes || undefined
+      };
+    });
+  } catch (error) {
+    console.error('Error in getMoodRecords:', error);
+    // Fallback to localStorage
+    const records = localStorage.getItem('meditation_moods');
+    return records ? JSON.parse(records) : [];
+  }
 }
 
 // Get mood records for a specific user
-export function getUserMoodRecords(userId: string): MoodRecord[] {
-  // In a real app, this would filter by user ID
-  // For now, just return all records
-  return getMoodRecords();
+export async function getUserMoodRecords(userId: string): Promise<MoodRecord[]> {
+  if (!userId) return [];
+  
+  try {
+    // Get records from Supabase
+    const { data, error } = await supabase
+      .from('mood_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching user mood records:', error);
+      return [];
+    }
+    
+    // Convert Supabase format to MoodRecord format
+    return data.map(entry => {
+      const factors = entry.factors as MoodFactors || {};
+      return {
+        sessionId: factors.session_id || '',
+        meditationId: factors.meditation_id || '',
+        meditationTitle: factors.meditation_title || '',
+        date: entry.date,
+        mood: entry.mood,
+        notes: entry.notes || undefined
+      };
+    });
+  } catch (error) {
+    console.error('Error in getUserMoodRecords:', error);
+    return [];
+  }
 }
 
 // Get sessions with their associated mood records (if any)
-export function getSessionsWithMood(): (MeditationSession & { mood?: string })[] {
+export async function getSessionsWithMood(): Promise<(MeditationSession & { mood?: string })[]> {
   const sessions = getSessions();
-  const moodRecords = getMoodRecords();
+  const moodRecords = await getMoodRecords();
   
   return sessions.map(session => {
     const moodRecord = moodRecords.find(record => record.sessionId === session.id);
@@ -258,9 +390,9 @@ export function generateSampleMoodData(sessions: MeditationSession[]): MoodRecor
 }
 
 // Initialize with sample data if no real data exists
-export function initializeSampleData(): void {
+export async function initializeSampleData(): Promise<void> {
   const existingSessions = getSessions();
-  const existingMoods = getMoodRecords();
+  const existingMoods = await getMoodRecords();
   
   if (existingSessions.length === 0) {
     const sampleSessions = generateSampleSessionData();
@@ -274,4 +406,11 @@ export function initializeSampleData(): void {
 }
 
 // Initialize sample data if none exists
-initializeSampleData(); 
+// We use an IIFE to handle the async function
+(async () => {
+  try {
+    await initializeSampleData();
+  } catch (error) {
+    console.error("Error initializing sample data:", error);
+  }
+})(); 

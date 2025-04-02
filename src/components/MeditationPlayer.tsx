@@ -134,29 +134,38 @@ export default function MeditationPlayer({
     audioControls.setPlaybackRate(rate);
   };
 
-  const handleSaveMood = (mood: string, notes: string) => {
-    if (savedSessionId) {
-      // Save the mood record linked to the meditation session
-      saveMoodRecord(savedSessionId, meditation.id, meditation.title, mood, notes);
+  const handleSaveMood = async (mood: string, notes: string) => {
+    try {
+      if (savedSessionId) {
+        // Save the mood record linked to the meditation session
+        await saveMoodRecord(savedSessionId, meditation.id, meditation.title, mood, notes);
+        
+        toast({
+          title: "Mood tracked",
+          description: "Your meditation experience has been saved."
+        });
+      } else {
+        // If no saved session (unusual case), create one now
+        const session = saveMeditationSession(meditation, true);
+        await saveMoodRecord(session.id, meditation.id, meditation.title, mood, notes);
+        
+        toast({
+          title: "Meditation & mood saved",
+          description: "Your session and mood have been recorded."
+        });
+      }
       
+      // Hide mood tracker and reset session state
+      setShowMoodTracker(false);
+      setSessionComplete(false);
+    } catch (error) {
+      console.error("Error saving mood:", error);
       toast({
-        title: "Mood tracked",
-        description: "Your meditation experience has been saved."
-      });
-    } else {
-      // If no saved session (unusual case), create one now
-      const session = saveMeditationSession(meditation, true);
-      saveMoodRecord(session.id, meditation.id, meditation.title, mood, notes);
-      
-      toast({
-        title: "Meditation & mood saved",
-        description: "Your session and mood have been recorded."
+        title: "Error saving mood",
+        description: "There was a problem saving your mood data.",
+        variant: "destructive"
       });
     }
-    
-    // Hide mood tracker and reset session state
-    setShowMoodTracker(false);
-    setSessionComplete(false);
   };
 
   const handleSkipMoodTracking = () => {
