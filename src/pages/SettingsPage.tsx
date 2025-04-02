@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,8 +14,9 @@ import Header from "@/components/Header";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Loader2, QrCode, KeyRound, Check, Moon, Sun } from "lucide-react";
+import { Loader2, QrCode, KeyRound, Check, Moon, Sun, Shield, AlertTriangle } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { supabase } from "@/integrations/supabase/client";
 
 const profileFormSchema = z.object({
   name: z
@@ -60,6 +61,14 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 type MFAFormValues = z.infer<typeof mfaFormSchema>;
 
+interface CommunitySettings {
+  disable_community: boolean;
+  hide_sensitive_content: boolean;
+  auto_moderation: boolean;
+  mute_notifications: boolean;
+  allow_direct_messages: boolean;
+}
+
 const SettingsPage = () => {
   const { user, enrollMFA, verifyMFA, isPremium } = useAuth();
   const { theme, toggleTheme, setTheme } = useTheme();
@@ -68,6 +77,16 @@ const SettingsPage = () => {
   const [isMFAEnabled, setIsMFAEnabled] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSavingCommunitySettings, setIsSavingCommunitySettings] = useState(false);
+  
+  // Community settings
+  const [communitySettings, setCommunitySettings] = useState<CommunitySettings>({
+    disable_community: false,
+    hide_sensitive_content: true,
+    auto_moderation: true,
+    mute_notifications: false,
+    allow_direct_messages: true,
+  });
   
   // AI Settings
   const [useVoiceInput, setUseVoiceInput] = useState(true);
@@ -103,6 +122,34 @@ const SettingsPage = () => {
       code: "",
     },
   });
+  
+  // Load community settings from database
+  useEffect(() => {
+    const loadCommunitySettings = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('community_settings')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.community_settings) {
+          setCommunitySettings(data.community_settings as CommunitySettings);
+        }
+      } catch (error) {
+        console.error("Error loading community settings:", error);
+        toast.error("Failed to load privacy settings");
+      }
+    };
+    
+    loadCommunitySettings();
+  }, [user]);
 
   // Handle profile form submission
   const onProfileSubmit = async (data: ProfileFormValues) => {
@@ -174,6 +221,32 @@ const SettingsPage = () => {
       toast.error("Failed to verify authentication code. Please try again.");
     }
   };
+  
+  // Handle community settings update
+  const handleSaveCommunitySettings = async () => {
+    if (!user?.id) return;
+    
+    setIsSavingCommunitySettings(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          community_settings: communitySettings
+        })
+        .eq('id', user.id);
+        
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Privacy settings updated successfully!");
+    } catch (error) {
+      console.error("Error saving community settings:", error);
+      toast.error("Failed to update privacy settings. Please try again.");
+    } finally {
+      setIsSavingCommunitySettings(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,11 +259,12 @@ const SettingsPage = () => {
         </div>
         
         <Tabs defaultValue="profile" className="space-y-4">
-          <TabsList>
+          <TabsList className="w-full max-w-full overflow-x-auto flex-nowrap">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="ai">AI Assistant</TabsTrigger>
+            <TabsTrigger value="privacy">Privacy & Safety</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
           
@@ -211,7 +285,7 @@ const SettingsPage = () => {
                   </Avatar>
                   <div className="space-y-2 text-center sm:text-left">
                     <h3 className="text-xl font-medium">{user?.name}</h3>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                    <div className="text-sm text-muted-foreground">{user?.email}</div>
                     <div>
                       <Button size="sm" variant="outline">Change Avatar</Button>
                     </div>
@@ -465,6 +539,157 @@ const SettingsPage = () => {
                       </CardContent>
                     </Card>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Privacy & Safety Tab */}
+          <TabsContent value="privacy" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" /> Community Privacy & Safety
+                </CardTitle>
+                <CardDescription>
+                  Control your experience in the community to maintain your mental wellbeing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800/50 mb-4">
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-500">Mental Health Safety</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                        These controls are designed to help you create a safe and supportive environment. 
+                        Use them to limit exposure to content that may negatively impact your mental health.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="disable-community" className="text-base font-medium">Disable Community Features</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Completely turn off access to community posts and interactions
+                      </p>
+                    </div>
+                    <Switch
+                      id="disable-community"
+                      checked={communitySettings.disable_community}
+                      onCheckedChange={(checked) => 
+                        setCommunitySettings({...communitySettings, disable_community: checked})
+                      }
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="hide-sensitive" className="text-base font-medium">Hide Sensitive Content</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Filter out posts with potentially triggering content
+                      </p>
+                    </div>
+                    <Switch
+                      id="hide-sensitive"
+                      checked={communitySettings.hide_sensitive_content}
+                      onCheckedChange={(checked) => 
+                        setCommunitySettings({...communitySettings, hide_sensitive_content: checked})
+                      }
+                      disabled={communitySettings.disable_community}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="auto-moderation" className="text-base font-medium">Enable Content Moderation</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically filter harmful or abusive content
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-moderation"
+                      checked={communitySettings.auto_moderation}
+                      onCheckedChange={(checked) => 
+                        setCommunitySettings({...communitySettings, auto_moderation: checked})
+                      }
+                      disabled={communitySettings.disable_community}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="mute-notifications" className="text-base font-medium">Mute Community Notifications</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Stop receiving notifications about community activity
+                      </p>
+                    </div>
+                    <Switch
+                      id="mute-notifications"
+                      checked={communitySettings.mute_notifications}
+                      onCheckedChange={(checked) => 
+                        setCommunitySettings({...communitySettings, mute_notifications: checked})
+                      }
+                      disabled={communitySettings.disable_community}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="allow-dm" className="text-base font-medium">Allow Direct Messages</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Let other community members contact you directly
+                      </p>
+                    </div>
+                    <Switch
+                      id="allow-dm"
+                      checked={communitySettings.allow_direct_messages}
+                      onCheckedChange={(checked) => 
+                        setCommunitySettings({...communitySettings, allow_direct_messages: checked})
+                      }
+                      disabled={communitySettings.disable_community}
+                    />
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={handleSaveCommunitySettings} 
+                  disabled={isSavingCommunitySettings}
+                  className="w-full sm:w-auto"
+                >
+                  {isSavingCommunitySettings ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    "Save Privacy Settings"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Report Help</CardTitle>
+                <CardDescription>
+                  Get help with harassment or harmful content
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm">
+                  If you've encountered harassment, harmful content, or other issues in the community,
+                  our support team is here to help. You can report specific posts or contact us directly.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button variant="outline">
+                    Report Content
+                  </Button>
+                  <Button variant="secondary">
+                    Contact Support
+                  </Button>
                 </div>
               </CardContent>
             </Card>

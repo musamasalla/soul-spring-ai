@@ -162,171 +162,170 @@ const MoodHistoryPage = () => {
                         <span className="hidden sm:inline">List View</span>
                       </TabsTrigger>
                     </TabsList>
-                  </Tabs>
-                </div>
-                <CardDescription>
-                  Your recent mood entries and their details
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <TabsContent value="chart" className="mt-0">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Object.entries(MOOD_EMOJIS).map(([mood, emoji]) => {
-                      const count = moodEntries.filter(entry => entry.mood === mood).length;
-                      const percentage = moodEntries.length ? Math.round((count / moodEntries.length) * 100) : 0;
-                      
-                      return (
-                        <Card key={mood} className="overflow-hidden">
-                          <div className={`h-1 bg-primary ${percentage > 50 ? 'w-full' : `w-[${percentage}%]`}`}></div>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-center">
-                              <div className="flex flex-col">
-                                <span className="text-3xl">{emoji}</span>
-                                <span className="text-sm font-medium mt-1">{MOOD_LABELS[mood]}</span>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-2xl font-semibold">{count}</span>
-                                <span className="text-xs text-muted-foreground block">
-                                  {percentage}%
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                  
-                  <div className="mt-6">
-                    <h3 className="text-sm font-medium mb-3">Related Factors</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Therapy Sessions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          {moodEntries.filter(entry => entry.factors?.therapy_session_id).length} entries linked to therapy
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Time of Day</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="text-xs space-y-1">
-                            <div className="flex justify-between">
-                              <span>Morning (6am-12pm):</span>
-                              <span>{moodEntries.filter(entry => {
-                                const hour = new Date(entry.created_at).getHours();
-                                return hour >= 6 && hour < 12;
-                              }).length} entries</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Afternoon (12pm-6pm):</span>
-                              <span>{moodEntries.filter(entry => {
-                                const hour = new Date(entry.created_at).getHours();
-                                return hour >= 12 && hour < 18;
-                              }).length} entries</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Evening (6pm-12am):</span>
-                              <span>{moodEntries.filter(entry => {
-                                const hour = new Date(entry.created_at).getHours();
-                                return hour >= 18 && hour < 24;
-                              }).length} entries</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Night (12am-6am):</span>
-                              <span>{moodEntries.filter(entry => {
-                                const hour = new Date(entry.created_at).getHours();
-                                return hour >= 0 && hour < 6;
-                              }).length} entries</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">Most Recent</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                          {moodEntries.length > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{MOOD_EMOJIS[moodEntries[0].mood]}</span>
-                              <span>{format(new Date(moodEntries[0].created_at), 'MMM d, yyyy HH:mm')}</span>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No entries</span>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="list" className="mt-0">
-                  {isLoading ? (
-                    <div className="h-60 flex items-center justify-center">
-                      <div className="animate-pulse text-primary">Loading entries...</div>
-                    </div>
-                  ) : moodEntries.length === 0 ? (
-                    <div className="h-60 flex items-center justify-center text-center">
-                      <div>
-                        <p className="text-muted-foreground mb-2">No mood entries recorded yet</p>
-                        <p className="text-sm text-muted-foreground">Use the Mood Tracker to begin recording your moods</p>
+                    
+                    <CardDescription className="mt-2">
+                      Your recent mood entries and their details
+                    </CardDescription>
+                    
+                    <TabsContent value="chart" className="mt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {Object.entries(MOOD_EMOJIS).map(([mood, emoji]) => {
+                          const count = moodEntries.filter(entry => entry.mood === mood).length;
+                          const percentage = moodEntries.length ? Math.round((count / moodEntries.length) * 100) : 0;
+                          
+                          return (
+                            <Card key={mood} className="overflow-hidden">
+                              <div className={`h-1 bg-primary ${percentage > 50 ? 'w-full' : `w-[${percentage}%]`}`}></div>
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex flex-col">
+                                    <span className="text-3xl">{emoji}</span>
+                                    <span className="text-sm font-medium mt-1">{MOOD_LABELS[mood]}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-2xl font-semibold">{count}</span>
+                                    <span className="text-xs text-muted-foreground block">
+                                      {percentage}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {moodEntries.slice(0, 20).map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-start gap-3 p-3 border rounded-lg hover:border-primary hover:bg-accent/50 transition-colors cursor-pointer"
-                          onClick={() => handleMoodEntryClick(entry)}
-                        >
-                          <div className="text-2xl">{MOOD_EMOJIS[entry.mood]}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                              <h4 className="font-medium">
-                                {MOOD_LABELS[entry.mood] || entry.mood}
-                              </h4>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(entry.created_at), 'MMM d, yyyy')}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {format(new Date(entry.created_at), 'HH:mm')}
-                                </span>
+                      
+                      <div className="mt-6">
+                        <h3 className="text-sm font-medium mb-3">Related Factors</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <Card>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Therapy Sessions</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              {moodEntries.filter(entry => entry.factors?.therapy_session_id).length} entries linked to therapy
+                            </CardContent>
+                          </Card>
+                          
+                          <Card>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Time of Day</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="text-xs space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Morning (6am-12pm):</span>
+                                  <span>{moodEntries.filter(entry => {
+                                    const hour = new Date(entry.created_at).getHours();
+                                    return hour >= 6 && hour < 12;
+                                  }).length} entries</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Afternoon (12pm-6pm):</span>
+                                  <span>{moodEntries.filter(entry => {
+                                    const hour = new Date(entry.created_at).getHours();
+                                    return hour >= 12 && hour < 18;
+                                  }).length} entries</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Evening (6pm-12am):</span>
+                                  <span>{moodEntries.filter(entry => {
+                                    const hour = new Date(entry.created_at).getHours();
+                                    return hour >= 18 && hour < 24;
+                                  }).length} entries</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Night (12am-6am):</span>
+                                  <span>{moodEntries.filter(entry => {
+                                    const hour = new Date(entry.created_at).getHours();
+                                    return hour >= 0 && hour < 6;
+                                  }).length} entries</span>
+                                </div>
                               </div>
-                            </div>
-                            {entry.notes && (
-                              <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
-                                {entry.notes}
-                              </p>
-                            )}
-                            {entry.factors?.therapy_session_id && (
-                              <Badge variant="outline" className="mt-2 text-xs">
-                                Therapy: {entry.factors.therapy_session_title}
-                              </Badge>
-                            )}
+                            </CardContent>
+                          </Card>
+                          
+                          <Card>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm">Most Recent</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              {moodEntries.length > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{MOOD_EMOJIS[moodEntries[0].mood]}</span>
+                                  <span>{format(new Date(moodEntries[0].created_at), 'MMM d, yyyy HH:mm')}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No entries</span>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="list" className="mt-4">
+                      {isLoading ? (
+                        <div className="h-60 flex items-center justify-center">
+                          <div className="animate-pulse text-primary">Loading entries...</div>
+                        </div>
+                      ) : moodEntries.length === 0 ? (
+                        <div className="h-60 flex items-center justify-center text-center">
+                          <div>
+                            <p className="text-muted-foreground mb-2">No mood entries recorded yet</p>
+                            <p className="text-sm text-muted-foreground">Use the Mood Tracker to begin recording your moods</p>
                           </div>
                         </div>
-                      ))}
-                      
-                      {moodEntries.length > 20 && (
-                        <Button variant="ghost" className="w-full" onClick={() => {}}>
-                          Load more entries
-                        </Button>
+                      ) : (
+                        <div className="space-y-3">
+                          {moodEntries.slice(0, 20).map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="flex items-start gap-3 p-3 border rounded-lg hover:border-primary hover:bg-accent/50 transition-colors cursor-pointer"
+                              onClick={() => handleMoodEntryClick(entry)}
+                            >
+                              <div className="text-2xl">{MOOD_EMOJIS[entry.mood]}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                                  <h4 className="font-medium">
+                                    {MOOD_LABELS[entry.mood] || entry.mood}
+                                  </h4>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {format(new Date(entry.created_at), 'MMM d, yyyy')}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {format(new Date(entry.created_at), 'HH:mm')}
+                                    </span>
+                                  </div>
+                                </div>
+                                {entry.notes && (
+                                  <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                                    {entry.notes}
+                                  </p>
+                                )}
+                                {entry.factors?.therapy_session_id && (
+                                  <Badge variant="outline" className="mt-2 text-xs">
+                                    Therapy: {entry.factors.therapy_session_title}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {moodEntries.length > 20 && (
+                            <Button variant="ghost" className="w-full" onClick={() => {}}>
+                              Load more entries
+                            </Button>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  )}
-                </TabsContent>
-              </CardContent>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </CardHeader>
             </Card>
           </div>
         </div>

@@ -416,7 +416,7 @@ export default function MeditationPlayer({
         {/* Session complete message - only show if not displaying mood tracker */}
         {sessionComplete && !showMoodTracker && !loop && (
           <div className="text-center text-primary font-medium animate-fade-in">
-            <p>Session complete! How do you feel?</p>
+            <div>Session complete! How do you feel?</div>
             <div className="flex justify-center mt-2 space-x-2">
               <Button 
                 size="sm" 

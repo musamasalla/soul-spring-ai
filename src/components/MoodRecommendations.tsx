@@ -8,55 +8,55 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmotionData } from "./EmotionDetector";
 import { MeditationData } from "@/types/meditation";
-import { TherapyTechniqueType } from "./TherapyTechniques";
+import { TechniqueData, therapyTechniquesList } from "./TherapyTechniques";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Heart, Brain, Sparkles, Play, Clock, Plus, ArrowRight, Lightbulb, Music } from "lucide-react";
+import { Heart, Brain, Sparkles, Play, Clock, Plus, ArrowRight, Lightbulb, Music, Dices } from "lucide-react";
 
 // Map moods to recommended activities
 const MOOD_ACTIVITY_MAP: Record<string, {
   meditations: string[];
-  techniques: TherapyTechniqueType[];
+  techniques: string[];
   description: string;
 }> = {
   "very_happy": {
     meditations: ["gratitude", "loving-kindness", "joy"],
-    techniques: ["gratitude", "values", "mindfulness"],
+    techniques: ["gratitude", "values-clarification", "mindfulness"],
     description: "Cultivate and savor your positive emotions"
   },
   "happy": {
     meditations: ["gratitude", "loving-kindness", "mindfulness"],
-    techniques: ["gratitude", "values", "mindfulness"],
+    techniques: ["gratitude", "values-clarification", "mindfulness"],
     description: "Enhance your positive mood with practices that build resilience"
   },
   "neutral": {
     meditations: ["mindfulness", "body-scan", "breathing"],
-    techniques: ["mindfulness", "values", "behavioral_activation"],
+    techniques: ["mindfulness", "values-clarification", "cognitive-reframing"],
     description: "Explore mindfulness practices to increase emotional awareness"
   },
   "calm": {
     meditations: ["breathing", "body-scan", "mindfulness"],
-    techniques: ["mindfulness", "relaxation", "gratitude"],
+    techniques: ["mindfulness", "progressive-relaxation", "gratitude"],
     description: "Maintain your sense of calm and groundedness"
   },
   "refreshed": {
     meditations: ["mindfulness", "intention-setting", "loving-kindness"],
-    techniques: ["goal_setting", "values", "behavioral_activation"],
+    techniques: ["values-clarification", "values-clarification", "gratitude"],
     description: "Channel your energy into meaningful pursuits"
   },
   "sleepy": {
     meditations: ["energizing-breath", "body-scan", "quick-reset"],
-    techniques: ["behavioral_activation", "self_care", "goal_setting"],
+    techniques: ["progressive-relaxation", "self-compassion", "mindfulness"],
     description: "Gentle practices to bring balance to your energy"
   },
   "anxious": {
     meditations: ["calm-anxiety", "breathing", "body-scan"],
-    techniques: ["relaxation", "grounding", "cognitive_restructuring"],
+    techniques: ["progressive-relaxation", "grounding", "cognitive-reframing"],
     description: "Soothing practices to reduce anxiety and worry"
   },
   "sad": {
     meditations: ["self-compassion", "loving-kindness", "joy"],
-    techniques: ["behavioral_activation", "cognitive_restructuring", "acceptance"],
+    techniques: ["self-compassion", "cognitive-reframing", "gratitude"],
     description: "Compassionate practices for difficult emotions"
   }
 };
@@ -83,7 +83,7 @@ interface MoodRecommendationsProps {
   emotionData?: EmotionData | null;
   userId?: string;
   onSelectMeditation?: (meditation: MeditationData) => void;
-  onSelectTechnique?: (technique: TherapyTechniqueType) => void;
+  onSelectTechnique?: (technique: TechniqueData) => void;
   compact?: boolean;
 }
 
@@ -96,7 +96,7 @@ export default function MoodRecommendations({
   compact = false
 }: MoodRecommendationsProps) {
   const [recommendedMeditations, setRecommendedMeditations] = useState<MeditationData[]>([]);
-  const [recommendedTechniques, setRecommendedTechniques] = useState<TherapyTechniqueType[]>([]);
+  const [recommendedTechniques, setRecommendedTechniques] = useState<TechniqueData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("meditations");
   const navigate = useNavigate();
@@ -199,44 +199,50 @@ export default function MoodRecommendations({
   
   // Generate technique recommendations based on mood and emotion data
   const generateTechniqueRecommendations = () => {
-    let techniques: TherapyTechniqueType[] = [];
+    let techniques: TechniqueData[] = [];
     
     // Add techniques based on current mood
     if (currentMood && currentMood in MOOD_ACTIVITY_MAP) {
-      techniques = [...techniques, ...MOOD_ACTIVITY_MAP[currentMood].techniques];
+      const techIds = MOOD_ACTIVITY_MAP[currentMood].techniques;
+      const filteredTechniques = therapyTechniquesList.filter(t => techIds.includes(t.id));
+      techniques = [...techniques, ...filteredTechniques];
     }
     
     // Add techniques based on emotion data
     if (emotionData && emotionData.recommendedTechniques) {
-      const mappedTechniques: TherapyTechniqueType[] = emotionData.recommendedTechniques
-        .map(technique => {
-          // Map technique name back to TherapyTechniqueType
-          switch (technique) {
-            case "Cognitive Restructuring": return "cognitive_restructuring";
-            case "Behavioral Activation": return "behavioral_activation";
-            case "Mindfulness": return "mindfulness";
-            case "Relaxation Techniques": return "relaxation";
-            case "Grounding Exercises": return "grounding";
-            case "Values Exploration": return "values";
-            case "Gradual Exposure": return "exposure";
-            case "Problem Solving": return "problem_solving";
-            case "Acceptance Practice": return "acceptance";
-            case "Gratitude Practice": return "gratitude";
-            case "Emotional Regulation": return "emotional_regulation";
-            case "Goal Setting": return "goal_setting";
-            case "Self-Care Activities": return "self_care";
-            default: return "mindfulness";
-          }
-        });
+      const techniqueMap: Record<string, string> = {
+        "Cognitive Restructuring": "cognitive-reframing",
+        "Behavioral Activation": "values-clarification",
+        "Mindfulness": "mindfulness",
+        "Relaxation Techniques": "progressive-relaxation",
+        "Grounding Exercises": "grounding",
+        "Values Exploration": "values-clarification",
+        "Gradual Exposure": "cognitive-reframing",
+        "Problem Solving": "cognitive-reframing",
+        "Acceptance Practice": "self-compassion",
+        "Gratitude Practice": "gratitude",
+        "Emotional Regulation": "self-compassion",
+        "Goal Setting": "values-clarification",
+        "Self-Care Activities": "self-compassion"
+      };
+      
+      const techIds = emotionData.recommendedTechniques.map(t => techniqueMap[t] || "mindfulness");
+      const mappedTechniques = therapyTechniquesList.filter(t => techIds.includes(t.id));
       
       techniques = [...techniques, ...mappedTechniques];
     }
     
-    // Remove duplicates
-    techniques = [...new Set(techniques)];
+    // Remove duplicates by ID
+    const uniqueTechniques = techniques.reduce((acc, current) => {
+      const existing = acc.find(item => item.id === current.id);
+      if (!existing) {
+        acc.push(current);
+      }
+      return acc;
+    }, [] as TechniqueData[]);
     
     // Limit to top 6
-    setRecommendedTechniques(techniques.slice(0, 6));
+    setRecommendedTechniques(uniqueTechniques.slice(0, 6));
   };
   
   // Handle selecting a meditation
@@ -249,11 +255,11 @@ export default function MoodRecommendations({
   };
   
   // Handle selecting a technique
-  const handleSelectTechnique = (technique: TherapyTechniqueType) => {
+  const handleSelectTechnique = (technique: TechniqueData) => {
     if (onSelectTechnique) {
       onSelectTechnique(technique);
     } else {
-      navigate('/therapy?technique=' + technique);
+      navigate(`/therapy?technique=${technique.id}`);
     }
   };
   
@@ -298,23 +304,8 @@ export default function MoodRecommendations({
   };
   
   // Get display name for technique
-  const getTechniqueName = (technique: TherapyTechniqueType): string => {
-    switch (technique) {
-      case "cognitive_restructuring": return "Cognitive Restructuring";
-      case "behavioral_activation": return "Behavioral Activation";
-      case "mindfulness": return "Mindfulness";
-      case "relaxation": return "Relaxation Techniques";
-      case "grounding": return "Grounding Exercises";
-      case "values": return "Values Exploration";
-      case "exposure": return "Gradual Exposure";
-      case "problem_solving": return "Problem Solving";
-      case "acceptance": return "Acceptance Practice";
-      case "gratitude": return "Gratitude Practice";
-      case "emotional_regulation": return "Emotional Regulation";
-      case "goal_setting": return "Goal Setting";
-      case "self_care": return "Self-Care Activities";
-      default: return technique;
-    }
+  const getTechniqueName = (technique: TechniqueData): string => {
+    return technique.name;
   };
   
   // If compact mode, show a simpler version
@@ -334,7 +325,7 @@ export default function MoodRecommendations({
               <Skeleton className="h-20 w-full rounded-md" />
               <Skeleton className="h-20 w-full rounded-md" />
             </div>
-          ) : (
+          ) : recommendedMeditations.length > 0 ? (
             <div className="space-y-3">
               {recommendedMeditations.slice(0, 2).map(meditation => (
                 <Button 
@@ -347,41 +338,23 @@ export default function MoodRecommendations({
                     <Music className="h-4 w-4 text-primary mr-2" />
                     <div className="text-left">
                       <div className="font-medium">{meditation.title}</div>
-                      <div className="text-xs text-muted-foreground">{meditation.category}</div>
+                      <div className="text-xs text-muted-foreground">{formatTime(meditation.duration)}</div>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {formatTime(meditation.duration)}
-                  </Badge>
-                </Button>
-              ))}
-              
-              {recommendedTechniques.slice(0, 2).map(technique => (
-                <Button 
-                  key={technique}
-                  variant="outline" 
-                  className="w-full justify-between h-auto py-2 px-3"
-                  onClick={() => handleSelectTechnique(technique)}
-                >
-                  <div className="flex items-center">
-                    <Lightbulb className="h-4 w-4 text-primary mr-2" />
-                    <div className="text-left">
-                      <div className="font-medium">{getTechniqueName(technique)}</div>
-                      <div className="text-xs text-muted-foreground">Therapy Technique</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </Button>
               ))}
             </div>
+          ) : (
+            <div className="p-4 text-center">
+              <div className="mb-2 flex justify-center">
+                <Dices className="h-10 w-10 text-muted-foreground opacity-50" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                No meditations available yet. Check back soon!
+              </p>
+            </div>
           )}
         </CardContent>
-        <CardFooter className="pt-0">
-          <Button variant="ghost" size="sm" className="w-full" onClick={() => navigate('/recommendations')}>
-            View All Recommendations
-          </Button>
-        </CardFooter>
       </Card>
     );
   }
@@ -475,7 +448,7 @@ export default function MoodRecommendations({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {recommendedTechniques.map(technique => (
                   <Button 
-                    key={technique}
+                    key={technique.id}
                     variant="outline" 
                     className="h-auto py-3 px-4 flex flex-col items-start text-left"
                     onClick={() => handleSelectTechnique(technique)}
