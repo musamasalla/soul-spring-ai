@@ -1,181 +1,148 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, lazy, Suspense } from "react";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { FavoritesProvider } from "./contexts/FavoritesContext";
-import AuthGuard from "./components/AuthGuard";
-import Header from "./components/Header";
-import ErrorBoundary from "./components/ErrorBoundary";
-import { PageSkeleton } from "@/components/ui/skeletons/CardSkeleton";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
+import Dashboard from '@/pages/dashboard';
+import TherapyDashboard from '@/pages/therapy/index';
+import MoodHistoryPage from '@/pages/MoodHistoryPage';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AppShell } from '@/components/ui/app-shell';
+import { useTherapyData } from '@/contexts/TherapyDataProvider';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-// Import non-lazy components that are critical
-import NotFound from "./pages/NotFound";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+// Route guard for protected routes
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  
+  // Show loading indicator while auth state is being determined
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
 
-// Lazy load other page components
-const Index = lazy(() => import("./pages/Index"));
-const AITherapyPage = lazy(() => import("./pages/AITherapyPage"));
-const MeditationPage = lazy(() => import("./pages/MeditationPage"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const JournalPage = lazy(() => import("./pages/JournalPage"));
-const CommunityPage = lazy(() => import("./pages/CommunityPage"));
-const PremiumPage = lazy(() => import("./pages/PremiumPage"));
-const MoodHistoryPage = lazy(() => import("./pages/MoodHistoryPage"));
-const RecommendationsPage = lazy(() => import("./pages/RecommendationsPage"));
-const DemoMeditationPage = lazy(() => import("./components/DemoMeditationPage"));
+// Route that redirects to dashboard if already logged in
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
 
-const App = () => {
-  // Create a client
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: 1,
-        refetchOnWindowFocus: false,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-      },
-    },
-  }));
+// Wrapper component that uses the therapy data context
+function TherapyDataWrapper({ children }: { children: React.ReactNode }) {
+  const { isUsingFallbackData } = useTherapyData();
+  
+  return (
+    <AppShell isOffline={isUsingFallbackData}>
+      {children}
+    </AppShell>
+  );
+}
 
+function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <FavoritesProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <div className="min-h-screen bg-background font-sans antialiased">
-                  <Router>
-                    <Header />
-                    <main className="pt-[57px] md:pt-[73px]">
-                      <Routes>
-                        <Route path="/" element={<Navigate to="/dashboard" />} />
-                        <Route path="/" element={
-                          <ErrorBoundary>
-                            <Suspense fallback={<PageSkeleton />}>
-                              <Index />
-                            </Suspense>
-                          </ErrorBoundary>
-                        } />
-                        <Route path="/login" element={
-                          <AuthGuard requireAuth={false}>
-                            <LoginPage />
-                          </AuthGuard>
-                        } />
-                        <Route path="/signup" element={
-                          <AuthGuard requireAuth={false}>
-                            <SignupPage />
-                          </AuthGuard>
-                        } />
-                        <Route path="/demo-meditation" element={
-                          <ErrorBoundary>
-                            <Suspense fallback={<PageSkeleton />}>
-                              <DemoMeditationPage />
-                            </Suspense>
-                          </ErrorBoundary>
-                        } />
-
-                        <Route path="/dashboard" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <DashboardPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/ai-therapy" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <AITherapyPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/meditation" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <MeditationPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/mood-history" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <MoodHistoryPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/recommendations" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <RecommendationsPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/settings" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <SettingsPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/journal" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <JournalPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/community" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <CommunityPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        <Route path="/premium" element={
-                          <AuthGuard>
-                            <ErrorBoundary>
-                              <Suspense fallback={<PageSkeleton />}>
-                                <PremiumPage />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </AuthGuard>
-                        } />
-                        
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </main>
-                  </Router>
-                </div>
-              </TooltipProvider>
-            </FavoritesProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route 
+                path="/login" 
+                element={
+                  <PublicOnlyRoute>
+                    <AppShell showNav={false}>
+                      <LoginPage />
+                    </AppShell>
+                  </PublicOnlyRoute>
+                }
+              />
+              <Route 
+                path="/signup" 
+                element={
+                  <PublicOnlyRoute>
+                    <AppShell showNav={false}>
+                      <SignupPage />
+                    </AppShell>
+                  </PublicOnlyRoute>
+                }
+              />
+              
+              {/* Protected routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <PrivateRoute>
+                    <TherapyDataWrapper>
+                      <Dashboard />
+                    </TherapyDataWrapper>
+                  </PrivateRoute>
+                }
+              />
+              <Route 
+                path="/therapy" 
+                element={
+                  <PrivateRoute>
+                    <TherapyDataWrapper>
+                      <TherapyDashboard />
+                    </TherapyDataWrapper>
+                  </PrivateRoute>
+                }
+              />
+              <Route 
+                path="/mood-history" 
+                element={
+                  <PrivateRoute>
+                    <TherapyDataWrapper>
+                      <MoodHistoryPage />
+                    </TherapyDataWrapper>
+                  </PrivateRoute>
+                }
+              />
+              
+              {/* Redirect root to dashboard if logged in, otherwise to login */}
+              <Route 
+                path="/" 
+                element={<Navigate to="/dashboard" replace />} 
+              />
+              
+              {/* Catch all route - redirect to dashboard */}
+              <Route 
+                path="*" 
+                element={<Navigate to="/dashboard" replace />} 
+              />
+            </Routes>
+          </Router>
+          
+          {/* Toast notifications */}
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
-};
+}
 
 export default App;

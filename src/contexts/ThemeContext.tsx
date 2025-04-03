@@ -1,81 +1,98 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type ThemeType = 'dark' | 'light';
+type Theme = 'light' | 'dark' | 'system';
 
-interface ThemeContextType {
-  theme: ThemeType;
-  toggleTheme: () => void;
-  setTheme: (theme: ThemeType) => void;
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+interface ThemeContextType {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  systemTheme: 'light' | 'dark';
+}
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check local storage or default to dark theme
-  const [theme, setThemeState] = useState<ThemeType>(() => {
-    // If running in browser, check local storage
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('mindspring-theme');
-      // Check system preference if no saved theme
-      if (!savedTheme) {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        return prefersDark ? 'dark' : 'light';
-      }
-      return (savedTheme as ThemeType) || 'dark';
-    }
-    return 'dark';
-  });
+const initialState: ThemeContextType = {
+  theme: 'system',
+  setTheme: () => null,
+  systemTheme: 'light',
+};
 
-  // Apply theme class to document when theme changes
+const ThemeContext = createContext<ThemeContextType>(initialState);
+
+export function ThemeProvider({
+  children,
+  defaultTheme = 'system',
+  storageKey = 'tranquil-mind-theme',
+  ...props
+}: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+  );
+  
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  );
+  
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
     const root = window.document.documentElement;
     
-    // Remove both themes first
     root.classList.remove('light', 'dark');
-    // Then add the current theme
-    root.classList.add(theme);
     
-    // Save to localStorage
-    localStorage.setItem('mindspring-theme', theme);
+    if (theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+      
+      root.classList.add(systemTheme);
+      setSystemTheme(systemTheme);
+    } else {
+      root.classList.add(theme);
+    }
   }, [theme]);
-
-  // Listen for system preference changes
+  
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Only update if user hasn't manually set a preference
-      if (!localStorage.getItem('mindspring-theme')) {
-        setThemeState(e.matches ? 'dark' : 'light');
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      const newSystemTheme = event.matches ? 'dark' : 'light';
+      setSystemTheme(newSystemTheme);
+      
+      if (theme === 'system') {
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(newSystemTheme);
       }
     };
     
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const toggleTheme = () => {
-    setThemeState(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, [theme]);
+  
+  const value = {
+    theme,
+    setTheme: (theme: Theme) => {
+      localStorage.setItem(storageKey, theme);
+      setTheme(theme);
+    },
+    systemTheme,
   };
   
-  const setTheme = (newTheme: ThemeType) => {
-    setThemeState(newTheme);
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider {...props} value={value}>
       {children}
     </ThemeContext.Provider>
   );
-};
+}
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
+  
+  if (context === undefined)
     throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  
   return context;
 };
