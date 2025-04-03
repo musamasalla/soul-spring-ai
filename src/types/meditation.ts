@@ -2,16 +2,93 @@ export interface MeditationData {
   id: string;
   title: string;
   description: string;
-  audio_url?: string;
-  image_url?: string;
-  category: string;
+  audioSrc: string;
+  duration: number; // in seconds
+  instructor: string;
+  category: string | string[];
+  isPremium?: boolean;
+  coverImage?: string;
+  isAiGenerated?: boolean;
+  dateCreated?: string;
+}
+
+// New types for multi-day programs and guided courses
+export interface ProgramMeditationData extends MeditationData {
+  day: number;
+  order: number;
+  completionRate?: number;
+}
+
+export interface MeditationProgramData {
+  id: string;
+  title: string;
+  description: string;
+  coverImage: string;
+  totalDays: number;
+  category: string[];
+  tags?: string[];
+  level: 'beginner' | 'intermediate' | 'advanced';
+  isPremium?: boolean;
+  meditations: ProgramMeditationData[];
+  targetGoal: string;
+  expectedOutcomes: string[];
+  authorName: string;
+  authorCredentials?: string;
+  userProgress?: {
+    currentDay: number;
+    lastCompletedDay: number;
+    startDate: string;
+    completionRate: number;
+  };
+}
+
+export interface EducationalResourceData {
+  id: string;
+  title: string;
+  description: string;
+  type: "article" | "guide" | "video" | "infographic" | "worksheet" | "podcast" | "audio";
+  topic: string;
   tags: string[];
-  duration: number;
-  play_count: number;
-  created_at: string;
-  updated_at?: string;
+  contentUrl: string;
+  imageUrl?: string;
+  estimatedReadTime?: number;
   author?: string;
-  is_premium?: boolean;
+  datePublished?: string;
+  featured?: boolean;
+}
+
+export type MeditationTheme = 
+  | 'mindfulness'
+  | 'anxiety-relief'
+  | 'sleep'
+  | 'self-love'
+  | 'energy'
+  | 'stress-relief'
+  | 'focus'
+  | 'gratitude'
+  | 'compassion'
+  | 'grief'
+  | 'anger'
+  | 'depression'
+  | 'trauma';
+
+export interface MeditationGenerationParams {
+  duration: number;
+  focus?: MeditationTheme;
+  userPrompt?: string;
+  voice?: string;
+}
+
+export interface MeditationReminderSettings {
+  enabled: boolean;
+  frequency: 'daily' | 'weekdays' | 'custom';
+  customDays?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
+  time: string; // HH:MM format
+  notification: {
+    browser: boolean;
+    email: boolean;
+    mobile: boolean;
+  };
 }
 
 export interface MeditationStats {

@@ -25,7 +25,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const SignupPage = () => {
-  const { signup } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,7 +42,7 @@ const SignupPage = () => {
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      await signup(data.email, data.password, data.name);
+      await signUp(data.email, data.password, data.name);
       navigate("/dashboard");
     } catch (error) {
       // Error handling is done in the AuthContext

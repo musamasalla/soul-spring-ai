@@ -3,48 +3,67 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import AuthGuard from "./components/AuthGuard";
 import Header from "./components/Header";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { PageSkeleton } from "@/components/ui/skeletons/CardSkeleton";
 
-import Index from "./pages/Index";
-import AITherapyPage from "./pages/AITherapyPage";
-import MeditationPage from "./pages/MeditationPage";
+// Import non-lazy components that are critical
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-import DashboardPage from "./pages/DashboardPage";
-import SettingsPage from "./pages/SettingsPage";
-import JournalPage from "./pages/JournalPage";
-import CommunityPage from "./pages/CommunityPage";
-import PremiumPage from "./pages/PremiumPage";
-import MoodHistoryPage from "./pages/MoodHistoryPage";
-import RecommendationsPage from "./pages/RecommendationsPage";
-import DemoMeditationPage from "./components/DemoMeditationPage";
+
+// Lazy load other page components
+const Index = lazy(() => import("./pages/Index"));
+const AITherapyPage = lazy(() => import("./pages/AITherapyPage"));
+const MeditationPage = lazy(() => import("./pages/MeditationPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const JournalPage = lazy(() => import("./pages/JournalPage"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
+const PremiumPage = lazy(() => import("./pages/PremiumPage"));
+const MoodHistoryPage = lazy(() => import("./pages/MoodHistoryPage"));
+const RecommendationsPage = lazy(() => import("./pages/RecommendationsPage"));
+const DemoMeditationPage = lazy(() => import("./components/DemoMeditationPage"));
 
 const App = () => {
   // Create a client
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+      },
+    },
+  }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <FavoritesProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <div className="min-h-screen bg-background font-sans antialiased">
-                <AuthProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <FavoritesProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <div className="min-h-screen bg-background font-sans antialiased">
                   <Router>
                     <Header />
                     <main className="pt-[57px] md:pt-[73px]">
                       <Routes>
                         <Route path="/" element={<Navigate to="/dashboard" />} />
-                        <Route path="/" element={<Index />} />
+                        <Route path="/" element={
+                          <ErrorBoundary>
+                            <Suspense fallback={<PageSkeleton />}>
+                              <Index />
+                            </Suspense>
+                          </ErrorBoundary>
+                        } />
                         <Route path="/login" element={
                           <AuthGuard requireAuth={false}>
                             <LoginPage />
@@ -55,51 +74,93 @@ const App = () => {
                             <SignupPage />
                           </AuthGuard>
                         } />
-                        <Route path="/demo-meditation" element={<DemoMeditationPage />} />
+                        <Route path="/demo-meditation" element={
+                          <ErrorBoundary>
+                            <Suspense fallback={<PageSkeleton />}>
+                              <DemoMeditationPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        } />
 
                         <Route path="/dashboard" element={
                           <AuthGuard>
-                            <DashboardPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <DashboardPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/ai-therapy" element={
                           <AuthGuard>
-                            <AITherapyPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <AITherapyPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/meditation" element={
                           <AuthGuard>
-                            <MeditationPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <MeditationPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/mood-history" element={
                           <AuthGuard>
-                            <MoodHistoryPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <MoodHistoryPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/recommendations" element={
                           <AuthGuard>
-                            <RecommendationsPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <RecommendationsPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/settings" element={
                           <AuthGuard>
-                            <SettingsPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <SettingsPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/journal" element={
                           <AuthGuard>
-                            <JournalPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <JournalPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/community" element={
                           <AuthGuard>
-                            <CommunityPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <CommunityPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         <Route path="/premium" element={
                           <AuthGuard>
-                            <PremiumPage />
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageSkeleton />}>
+                                <PremiumPage />
+                              </Suspense>
+                            </ErrorBoundary>
                           </AuthGuard>
                         } />
                         
@@ -107,13 +168,13 @@ const App = () => {
                       </Routes>
                     </main>
                   </Router>
-                </AuthProvider>
-              </div>
-            </TooltipProvider>
-          </FavoritesProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+                </div>
+              </TooltipProvider>
+            </FavoritesProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

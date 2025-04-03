@@ -20,7 +20,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +36,7 @@ const LoginPage = () => {
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password);
+      await signIn(data.email, data.password);
       // Redirect to the page they tried to access or dashboard
       const from = location.state?.from || "/dashboard";
       navigate(from);

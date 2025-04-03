@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Send, RefreshCw, Mic, MicOff, Volume2, VolumeX, Clock, PlusCircle, Save, Calendar, FileText, ChevronUp, ChevronDown, Heart, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import EmotionDetector, { EmotionData } from "./EmotionDetector";
 import TherapyTechniques, { TechniqueData } from "./TherapyTechniques";
+import { FixedSizeList as List } from 'react-window';
+import { ChatSkeleton } from "@/components/ui/skeletons/CardSkeleton";
 import "./EnhancedAIChat.css";
+import { VoiceControl } from './VoiceControl';
+import { Box } from "@mui/material";
+import { TextField } from "@mui/material";
+import { IconButton } from "@mui/material";
+import { Send as SendIcon } from "@mui/icons-material";
+import { useVoiceEnabledAI } from '../hooks/useVoiceEnabledAI';
+import { v4 as uuidv4 } from 'uuid';
+import { useHybridVoice } from '../hooks/useHybridVoice';
+import { AIVoiceTherapy } from "./AIVoiceTherapy";
+import { TherapySessionTracker } from './TherapySessionTracker';
+import { TherapyGoalsManager } from './TherapyGoalsManager';
+import { SessionProgressView } from './SessionProgressView';
+import { useTherapySession } from '@/hooks/useTherapySession';
+import { InterventionRecommender } from './InterventionRecommender';
+import { TherapeuticInterventions, TherapeuticApproach } from './TherapeuticInterventions';
 
 interface Message {
   id?: string;
@@ -135,6 +152,140 @@ interface TherapySessionProps {
   onNewMessage?: (message: { role: string; content: string }) => void;
 }
 
+// Memoized message component for optimized rendering
+const ChatMessage = memo(({ message }: { message: Message }) => {
+  const { user } = useAuth();
+  const isUser = message.role === "user";
+  
+  return (
+    <div className={`chat-message ${isUser ? 'user-message' : 'assistant-message'}`}>
+      <div className="message-avatar">
+        {isUser ? (
+          <Avatar>
+            <AvatarImage src={user?.avatar || ''} />
+            <AvatarFallback>{user?.name?.substring(0, 2) || 'U'}</AvatarFallback>
+          </Avatar>
+        ) : (
+          <Avatar>
+            <AvatarImage src="/ai-avatar.png" />
+            <AvatarFallback>AI</AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+      <div className="message-content">
+        <div className="message-header">
+          <span className="message-sender">{isUser ? user?.name || 'You' : 'AI Assistant'}</span>
+          {message.timestamp && (
+            <span className="message-time">
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+        <div className="message-body">
+          {message.isThinking ? (
+            <div className="typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          ) : message.isTransition ? (
+            <div className="transition-message">{message.content}</div>
+          ) : (
+            <div>{message.content}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ChatMessage.displayName = 'ChatMessage';
+
+// Virtual List Row Renderer
+const MessageRow = memo(({ data, index, style }: { data: Message[], index: number, style: React.CSSProperties }) => {
+  return (
+    <div style={style}>
+      <ChatMessage message={data[index]} />
+    </div>
+  );
+});
+
+MessageRow.displayName = 'MessageRow';
+
+// Optimized message typing simulation with batching
+const simulateTyping = (message: string, callback: (text: string) => void) => {
+  const typingSpeed = 30; // ms per character
+  const batchSize = 10; // characters per batch
+  let currentText = '';
+  let index = 0;
+  
+  const typingInterval = setInterval(() => {
+    if (index >= message.length) {
+      clearInterval(typingInterval);
+      return;
+    }
+    
+    const end = Math.min(index + batchSize, message.length);
+    currentText += message.slice(index, end);
+    
+    callback(currentText);
+    index = end;
+  }, typingSpeed);
+  
+  return () => clearInterval(typingInterval);
+};
+
+// Replace existing message rendering with virtualized list
+const VirtualizedMessageList = memo(({ messages }: { messages: Message[] }) => {
+  const listRef = useRef<List>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollToItem(messages.length - 1);
+    }
+  }, [messages.length]);
+  
+  // Calculate average item height (can be refined for better performance)
+  const estimatedItemHeight = 120; 
+  
+  return (
+    <div className="messages-container" style={{ height: '500px', overflow: 'hidden' }}>
+      {messages.length > 0 ? (
+        <List
+          ref={listRef}
+          height={500}
+          width="100%"
+          itemCount={messages.length}
+          itemSize={estimatedItemHeight}
+          itemData={messages}
+        >
+          {MessageRow}
+        </List>
+      ) : (
+        <div className="empty-chat">
+          <p>No messages yet. Start the conversation!</p>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+});
+
+VirtualizedMessageList.displayName = 'VirtualizedMessageList';
+
+interface EnhancedAIChatProps {
+  sessionId?: string;
+  currentStage?: 'opening' | 'assessment' | 'intervention' | 'closing';
+  onStageUpdate?: (stage: string) => void;
+  sessionTopics?: string[];
+  completionPercentage?: number;
+  onCompletionUpdate?: (percentage: number) => void;
+  onNewMessage?: (message: { role: string; content: string }) => void;
+  enableTherapeuticInterventions?: boolean;
+}
+
 const EnhancedAIChat = ({
   sessionId,
   currentStage = 'opening',
@@ -142,8 +293,9 @@ const EnhancedAIChat = ({
   sessionTopics = [],
   completionPercentage = 0,
   onCompletionUpdate,
-  onNewMessage
-}: TherapySessionProps = {}) => {
+  onNewMessage,
+  enableTherapeuticInterventions = true
+}: EnhancedAIChatProps = {}) => {
   const { user, isPremium } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -173,6 +325,23 @@ const EnhancedAIChat = ({
   const [showTechniquesPanel, setShowTechniquesPanel] = useState(false);
   const [showCrisisResources, setShowCrisisResources] = useState(false);
   
+  // Use therapy session hook
+  const {
+    sessionData,
+    isLoading: isLoadingSession,
+    saveGoal,
+    saveSession,
+    toggleMilestone,
+    generateSessionSummary
+  } = useTherapySession(user?.id);
+  
+  // Sessions state
+  const [showSessionTracker, setShowSessionTracker] = useState<boolean>(true);
+  const [showGoalsManager, setShowGoalsManager] = useState<boolean>(false);
+  const [showProgressView, setShowProgressView] = useState<boolean>(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | undefined>(undefined);
+  const [currentSessionSummary, setCurrentSessionSummary] = useState<any>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Speech to text
@@ -193,6 +362,22 @@ const EnhancedAIChat = ({
   } = useTextToSpeech();
   
   const [autoSpeak, setAutoSpeak] = useState(false);
+
+  // Voice-enabled AI hook for emotion-aware speech
+  const voiceAI = useVoiceEnabledAI({
+    emotionAware: true,
+    speakingRate: 1.0
+  });
+
+  // Hybrid voice system for premium voice capability
+  const hybridVoice = useHybridVoice({
+    premium: true,
+    premiumThreshold: 0.6,
+    defaultVoiceGender: 'female'
+  });
+
+  // Voice controls
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState<boolean>(false);
 
   // Load chat history on component mount
   useEffect(() => {
@@ -317,7 +502,7 @@ const EnhancedAIChat = ({
   };
   
   // Save current session
-  const saveSession = async () => {
+  const handleSessionSave = async () => {
     try {
       // If no active session, create one
       if (!activeSession) {
@@ -595,91 +780,114 @@ const EnhancedAIChat = ({
     }
   }, [activeSession, currentStage, sessionTopics, messages.length]);
 
-  // Handle sending user message
+  // Modified handleSend function to detect emotions and use voice
   const handleSend = async () => {
     if (!input.trim() || loading) return;
-    
-    const userMessage = input.trim();
-    setInput("");
+
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: input,
+      timestamp: new Date().toISOString(),
+      sender: 'user',
+    };
+
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInput('');
     setLoading(true);
 
-    // Add user message immediately
-    const userMessageObj: Message = {
-      role: "user",
-      content: userMessage,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessageObj]);
-    
-    // Notify parent about the new message
-    if (onNewMessage) {
-      onNewMessage({ role: "user", content: userMessage });
-    }
-    
-    // Add AI thinking indicator
-    setIsTyping(true);
-    
+    // Scroll to bottom
+    scrollToBottom();
+
     try {
-      // Get AI response
-      const response = await sendMessageToAI(userMessage);
+      // Detect emotions in the user's message
+      const detectedEmotions = await analyzeEmotions(input);
       
-      // Remove typing indicator and add actual response
-      setIsTyping(false);
+      // Determine appropriate response technique
+      const technique = selectTechnique(detectedEmotions);
       
-      if (response) {
-        // Add AI response
-        const aiMessageObj: Message = {
-        role: "assistant",
-          content: response,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev.filter(m => !m.isThinking), aiMessageObj]);
-        
-        // Notify parent about the new AI message
-        if (onNewMessage) {
-          onNewMessage({ role: "assistant", content: response });
-        }
-        
-        // If it's a new session, try to generate a title from the first exchange
-        if (!activeSession && messages.length === 2) {
-          const suggestedTitle = generateSessionTitle(userMessage, response);
-          if (suggestedTitle) {
-            setSessionTitle(suggestedTitle);
-          }
+      // Generate AI response based on detected emotions and selected technique
+      const aiResponse = await generateAIResponse(
+        input, 
+        technique, 
+        sessionStage, 
+        sessionTopic, 
+        previousMessages
+      );
+
+      // Get dominant emotion from AI response to modulate voice
+      let aiResponseEmotion = 'neutral';
+      if (technique) {
+        switch (technique.category) {
+          case 'Calming':
+            aiResponseEmotion = 'calm';
+            break;
+          case 'Challenging':
+            aiResponseEmotion = 'confident';
+            break;
+          case 'Supportive':
+            aiResponseEmotion = 'empathetic';
+            break;
+          case 'Exploratory':
+            aiResponseEmotion = 'curious';
+            break;
+          default:
+            aiResponseEmotion = 'neutral';
         }
       }
+
+      const aiMessage: Message = {
+        id: uuidv4(),
+        content: aiResponse,
+        timestamp: new Date().toISOString(),
+        sender: 'assistant',
+        emotion: detectedEmotions.dominant,
+        technique: technique?.name
+      };
+
+      // Update messages with AI response
+      setMessages([...updatedMessages, aiMessage]);
+      
+      // Speak the AI response with appropriate emotional tone
+      if (voiceAI.isSupported) {
+        voiceAI.speakWithEmotion(aiResponse, aiResponseEmotion);
+      }
+      
+      // Save conversation to database or local storage
+      saveConversation([...updatedMessages, aiMessage]);
+      
     } catch (error) {
-      console.error('Error handling message:', error);
-      setIsTyping(false);
-      toast.error('Failed to get response');
+      console.error('Error generating AI response:', error);
+      
+      const errorMessage: Message = {
+        id: uuidv4(),
+        content: "I'm sorry, I'm having trouble responding right now. Please try again.",
+        timestamp: new Date().toISOString(),
+        sender: 'assistant',
+      };
+      
+      setMessages([...updatedMessages, errorMessage]);
     } finally {
       setLoading(false);
+      scrollToBottom();
     }
   };
-  
-  // Generate a session title from the first exchange
-  const generateSessionTitle = (userMessage: string, aiResponse: string) => {
-    // Extract key topics using a simple approach
-    const combinedText = `${userMessage} ${aiResponse}`;
-    
-    // Look for therapy topics in the text
-    const foundTopic = therapyTopics.find(topic => 
-      combinedText.toLowerCase().includes(topic.name.toLowerCase())
-    );
-    
-    if (foundTopic) {
-      return `${foundTopic.name} Discussion`;
+
+  // Handle user speech input to send message
+  const handleUserSpeech = (text: string) => {
+    if (text.trim()) {
+      setInput(text);
+      // Auto-send when using voice
+      handleSendMessage(null, text);
     }
-    
-    // Try to extract a key phrase (simplified)
-    const words = userMessage.split(/\s+/).filter(w => w.length > 3);
-    if (words.length > 2) {
-      return `Discussion about ${words[0]} ${words[1]}...`;
-    }
-    
-    return null;
+  };
+
+  // Handle AI response for voice reading
+  const handleAIResponse = async (text: string): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      // We'll let the AIVoiceTherapy component handle speaking
+      resolve();
+    });
   };
 
   const toggleListening = () => {
@@ -722,19 +930,84 @@ const EnhancedAIChat = ({
   
   // Handle technique selection
   const handleTechniqueSelected = (technique: TechniqueData) => {
-    // Add a message from the assistant explaining the technique
-    const techniqueMessage = {
-      role: "assistant" as const,
-      content: `I think the **${technique.name}** technique might be helpful for you right now. 
-      
-${technique.description}
-
-It only takes about ${technique.duration} minutes. Would you like me to guide you through it?`,
-      timestamp: new Date()
-    };
+    // Automatically send a message to the AI about the selected technique
+    const userMessage = `I'd like to learn more about the "${technique.name}" technique and how to practice it.`;
     
-    setMessages(prev => [...prev, techniqueMessage]);
-    scrollToBottom();
+    // Add the message to the conversation
+    addMessage({
+      role: 'user',
+      content: userMessage,
+    });
+    
+    // Trigger the AI response
+    handleSubmit(new FormEvent('submit') as FormEvent<HTMLFormElement>);
+  };
+  
+  // Handle approach selection
+  const handleApproachSelected = (approach: TherapeuticApproach) => {
+    // Automatically send a message to the AI about the selected approach
+    const userMessage = `I'd like to learn more about ${approach.name} and how it could help me.`;
+    
+    // Add the message to the conversation
+    addMessage({
+      role: 'user',
+      content: userMessage,
+    });
+    
+    // Trigger the AI response
+    handleSubmit(new FormEvent('submit') as FormEvent<HTMLFormElement>);
+  };
+
+  // Handle session summary generation
+  const handleGenerateSessionSummary = () => {
+    if (!activeSession && messages.length < 3) return;
+    
+    // Generate new session summary
+    const summary = generateSessionSummary(
+      activeSession || `temp-session-${Date.now()}`,
+      messages,
+      emotionData,
+      currentStage
+    );
+    
+    // Save the session summary
+    saveSession(summary)
+      .then(savedSummary => {
+        setCurrentSessionSummary(savedSummary);
+        toast.success('Session summary saved');
+      })
+      .catch(err => {
+        console.error('Error saving session summary:', err);
+        toast.error('Failed to save session summary');
+      });
+  };
+  
+  // Handle goal selection
+  const handleGoalSelected = (goalId: string) => {
+    setSelectedGoalId(goalId);
+    setShowGoalsManager(true);
+    setShowSessionTracker(false);
+    setShowProgressView(false);
+  };
+  
+  // Handle goal updates
+  const handleGoalsUpdated = (updatedGoals: any[]) => {
+    // Handle goal updates
+    console.log('Goals updated:', updatedGoals);
+  };
+  
+  // Handle milestone toggling
+  const handleMilestoneToggle = (sessionId: string, milestoneId: string, isCompleted: boolean) => {
+    toggleMilestone(sessionId, milestoneId, isCompleted)
+      .then(success => {
+        if (success) {
+          toast.success(`Practice item ${isCompleted ? 'completed' : 'reopened'}`);
+        }
+      })
+      .catch(err => {
+        console.error('Error toggling milestone:', err);
+        toast.error('Failed to update practice item');
+      });
   };
 
   return (
@@ -781,10 +1054,10 @@ It only takes about ${technique.duration} minutes. Would you like me to guide yo
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                      onClick={() => setShowTechniquesPanel(!showTechniquesPanel)}
-                      className={showTechniquesPanel ? "text-primary" : ""}
-                    >
-                      <Brain className="h-5 w-5" />
+                    onClick={() => setShowTechniquesPanel(!showTechniquesPanel)}
+                    className={showTechniquesPanel ? "text-primary" : ""}
+                  >
+                    <Brain className="h-5 w-5" />
                   </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -798,30 +1071,14 @@ It only takes about ${technique.duration} minutes. Would you like me to guide yo
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={toggleListening}
-                    className={isListening ? "voice-active text-primary" : ""}
+                    onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                    className={isVoiceEnabled ? "text-primary" : ""}
                   >
-                    {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                    {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {isListening ? "Stop Listening" : "Start Listening"}
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-          <Button 
-                    size="icon"
-                    variant="outline"
-                    onClick={toggleSpeaking}
-                    className={autoSpeak ? "text-primary" : ""}
-                  >
-                    {autoSpeak ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {autoSpeak ? "Disable Auto-Speak" : "Enable Auto-Speak"}
+                  {isVoiceEnabled ? "Disable Voice" : "Enable Voice"}
                 </TooltipContent>
               </Tooltip>
               
@@ -860,59 +1117,10 @@ It only takes about ${technique.duration} minutes. Would you like me to guide yo
             </div>
           )}
           
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {message.role === "assistant" && (
-                <Avatar className="h-8 w-8 mr-2">
-                  <AvatarImage src="/ai-avatar.png" alt="AI" />
-                  <AvatarFallback className="bg-primary/20 text-primary">AI</AvatarFallback>
-                </Avatar>
-              )}
-              
-              <div
-                className={`max-w-[80%] p-3 rounded-lg ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground chat-bubble-user"
-                    : message.isTransition 
-                      ? "bg-primary/10 border border-primary/20 chat-bubble-assistant" 
-                      : "bg-secondary chat-bubble-assistant"
-                }`}
-              >
-                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                <div className="text-xs opacity-70 text-right mt-1">
-                  {message.timestamp?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-              
-              {message.role === "user" && (
-                <Avatar className="h-8 w-8 ml-2">
-                  <AvatarImage src={user?.avatarUrl || ""} alt="User" />
-                  <AvatarFallback className="bg-primary/10">
-                    {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-            </div>
-          ))}
-          
-          {/* Typing indicator */}
-          {isTyping && (
-            <div className="flex justify-start">
-              <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src="/ai-avatar.png" alt="AI" />
-                <AvatarFallback className="bg-primary/20 text-primary">AI</AvatarFallback>
-              </Avatar>
-              <div className="bg-secondary p-3 rounded-lg chat-bubble-assistant">
-                <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-            </div>
+          {loading && messages.length === 0 ? (
+            <ChatSkeleton />
+          ) : (
+            <VirtualizedMessageList messages={messages} />
           )}
           
           {chatError && (
@@ -999,20 +1207,124 @@ It only takes about ${technique.duration} minutes. Would you like me to guide yo
             )}
           </div>
         )}
+
+        {/* Voice Therapy UI */}
+        {isVoiceEnabled && (
+          <div className="px-4 py-2 border-t border-border/40">
+            <AIVoiceTherapy
+              onUserSpeech={handleUserSpeech}
+              onAIResponse={handleAIResponse}
+              disabled={loading}
+              className="mb-2"
+            />
+          </div>
+        )}
+        
+        {/* Chat Input */}
+        <div className="border-t p-4">
+          <form onSubmit={handleSend} className="flex items-end gap-2">
+            <div className="flex-1">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                className="resize-none"
+              />
+            </div>
+            <Button type="submit" disabled={loading}>Send</Button>
+          </form>
+        </div>
       </div>
       
-      {/* Side panels */}
-      <div className="w-full md:w-[350px] space-y-4">
+      {/* Therapy Session Sidebar */}
+      <div className="w-full md:w-80 space-y-4">
+        {/* Therapy Panels Toggle Buttons */}
+        <div className="flex bg-card rounded-lg p-1 mb-2">
+          <Button 
+            variant={showSessionTracker ? "default" : "ghost"}
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => {
+              setShowSessionTracker(true);
+              setShowGoalsManager(false);
+              setShowProgressView(false);
+            }}
+          >
+            Session
+          </Button>
+          <Button 
+            variant={showGoalsManager ? "default" : "ghost"}
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => {
+              setShowSessionTracker(false);
+              setShowGoalsManager(true);
+              setShowProgressView(false);
+            }}
+          >
+            Goals
+          </Button>
+          <Button 
+            variant={showProgressView ? "default" : "ghost"}
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => {
+              setShowSessionTracker(false);
+              setShowGoalsManager(false);
+              setShowProgressView(true);
+            }}
+          >
+            Progress
+          </Button>
+        </div>
+        
+        {/* Emotion Detector Panel */}
         {showEmotionPanel && (
           <EmotionDetector 
-            messages={messages} 
+            messages={messages}
             onEmotionDetected={handleEmotionDetected}
           />
         )}
         
+        {/* Session Tracker */}
+        {showSessionTracker && (
+          <TherapySessionTracker
+            sessionId={activeSession || `temp-session-${Date.now()}`}
+            messages={messages}
+            currentStage={currentStage}
+            emotionData={emotionData}
+            onGoalSelected={handleGoalSelected}
+            onMilestoneToggle={(milestoneId, isCompleted) => 
+              handleMilestoneToggle(
+                activeSession || `temp-session-${Date.now()}`, 
+                milestoneId, 
+                isCompleted
+              )
+            }
+          />
+        )}
+        
+        {/* Goals Manager */}
+        {showGoalsManager && (
+          <TherapyGoalsManager
+            userId={user?.id || 'anonymous'}
+            selectedGoalId={selectedGoalId}
+            onGoalUpdate={handleGoalsUpdated}
+          />
+        )}
+        
+        {/* Progress View */}
+        {showProgressView && (
+          <SessionProgressView
+            userId={user?.id || 'anonymous'}
+            sessions={sessionData.sessions}
+            emotionData={emotionData}
+          />
+        )}
+        
+        {/* Therapy Techniques Panel */}
         {showTechniquesPanel && (
-          <TherapyTechniques 
-            emotionData={emotionData || undefined}
+          <TherapyTechniques
             recommendedTechniques={recommendedTechniques}
             onTechniqueSelected={handleTechniqueSelected}
           />
@@ -1022,5 +1334,5 @@ It only takes about ${technique.duration} minutes. Would you like me to guide yo
   );
 };
 
-export default EnhancedAIChat;
+export default memo(EnhancedAIChat);
 

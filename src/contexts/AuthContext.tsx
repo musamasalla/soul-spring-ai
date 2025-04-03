@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from '@supabase/supabase-js';
@@ -17,14 +17,24 @@ interface UserProfile {
 }
 
 interface AuthContextType {
-  user: UserProfile | null;
   session: Session | null;
+  user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isPremium: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{
+    error: Error | null;
+    data: Session | null;
+  }>;
+  signUp: (email: string, password: string, name?: string) => Promise<{
+    error: Error | null;
+    data: Session | null;
+  }>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{
+    error: Error | null;
+    data: any;
+  }>;
   enrollMFA: () => Promise<string>;
   verifyMFA: (code: string) => Promise<boolean>;
   checkUsageLimits: (type: 'ai_messages' | 'journal_entries') => {
@@ -33,183 +43,104 @@ interface AuthContextType {
   };
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
+  isPremium: false,
+  signIn: async () => ({ error: null, data: null }),
+  signUp: async () => ({ error: null, data: null }),
+  signOut: async () => {},
+  resetPassword: async () => ({ error: null, data: null }),
+  enrollMFA: async () => '',
+  verifyMFA: async () => false,
+  checkUsageLimits: () => ({ canUse: true, remaining: 0 }),
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPremium, setIsPremium] = useState(false);
   
-  // Handle authentication state changes
   useEffect(() => {
-    // First set up the auth listener
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
-          // Update session state
-          setSession(session);
-          
-          // Fetch user profile data from profiles table
-          try {
-            // Use let instead of const for profileData since we need to reassign it
-            let profileData = null;
-            
-            // First try to get existing profile
-            const { data, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-              
-            profileData = data;
-            
-            if (profileError) {
-              console.warn('Profile fetch error:', profileError.message);
-            }
-            
-            // If profile doesn't exist, create a new profile
-            if (!profileData) {
-              console.log('Creating new profile for user:', session.user.id);
-              
-              try {
-                // Create profile with normal user permissions
-                // This will work if the RLS policy and triggers are set up correctly
-                const { data: newProfile, error: createError } = await supabase
-                  .from('profiles')
-                  .insert({
-                    id: session.user.id,
-                    name: session.user.email?.split('@')[0] || '',
-                    avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
-                    is_premium: false,
-                    ai_messages_limit: 10,
-                    journal_entries_limit: 5
-                  })
-                  .select('*')
-                  .maybeSingle();
-                
-                if (createError) {
-                  console.error('Error creating user profile:', createError);
-                  // Don't throw error - use fallback profile below
-                } else {
-                  console.log('New profile created successfully');
-                  profileData = newProfile;
-                }
-              } catch (insertError) {
-                console.error('Exception creating profile:', insertError);
-                // Continue with fallback profile
-              }
-            }
-            
-            // Combine auth user data with profile data (or fallback data if profile creation failed)
-            const userProfile: UserProfile = {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: (profileData?.name || session.user.email?.split('@')[0] || ''),
-              avatar: profileData?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profileData?.name || session.user.email || ''}`,
-              is_premium: !!profileData?.is_premium,
-              usage_limits: {
-                ai_messages: profileData?.ai_messages_limit || 10,
-                journal_entries: profileData?.journal_entries_limit || 5,
-              }
-            };
-            
-            setUser(userProfile);
-            setIsPremium(!!profileData?.is_premium);
-          } catch (error) {
-            console.error('Error in auth process:', error);
-            // Fallback to basic user data if profile fetch fails
-            const basicProfile: UserProfile = {
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.email?.split('@')[0] || '',
-              avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${session.user.email || ''}`,
-              is_premium: false,
-              usage_limits: {
-                ai_messages: 10,
-                journal_entries: 5,
-              }
-            };
-            setUser(basicProfile);
-            setIsPremium(false);
-          }
-        } else {
-          // Clear user data on logout/session expiry
-          setUser(null);
-          setSession(null);
-          setIsPremium(false);
-        }
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         setIsLoading(false);
       }
     );
-
-    // Check for existing session on initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        setIsLoading(false);
-      }
-      // The session will be handled by the onAuthStateChange listener
-    });
 
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
+  // Sign in with email and password
+  const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
-      if (error) throw error;
-      
       toast.success("Welcome back!");
-    } catch (error: any) {
+      return { data: data.session, error };
+    } catch (error) {
       console.error('Login error:', error);
-      toast.error(error.message || "Login failed. Please check your credentials.");
-      throw error;
-    } finally {
-      setIsLoading(false);
+      toast.error(error instanceof Error ? error.message : "Login failed. Please check your credentials.");
+      return { data: null, error: error as Error };
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    setIsLoading(true);
-    
+  // Sign up with email and password
+  const signUp = async (email: string, password: string, name?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name: name,
-          },
+            name: name || '',
+          }
         }
       });
-      
-      if (error) throw error;
-      
       toast.success("Account created successfully!");
-    } catch (error: any) {
+      return { data: data.session, error };
+    } catch (error) {
       console.error('Signup error:', error);
-      toast.error(error.message || "Signup failed. Please try again.");
-      throw error;
-    } finally {
-      setIsLoading(false);
+      toast.error(error instanceof Error ? error.message : "Signup failed. Please try again.");
+      return { data: null, error: error as Error };
     }
   };
 
-  const logout = async () => {
+  // Sign out
+  const signOut = async () => {
     try {
       await supabase.auth.signOut();
       toast.info("You have been logged out.");
     } catch (error) {
       console.error('Logout error:', error);
       toast.error("Logout failed. Please try again.");
+    }
+  };
+
+  // Reset password
+  const resetPassword = async (email: string) => {
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+      return { data, error };
+    } catch (error) {
+      return { data: null, error: error as Error };
     }
   };
 
@@ -278,17 +209,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { canUse: true, remaining: limit };
   };
 
+  useEffect(() => {
+    if (user) {
+      setIsPremium(!!user.is_premium);
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
-        user,
         session,
+        user,
         isLoading,
         isAuthenticated: !!user,
         isPremium,
-        login,
-        signup,
-        logout,
+        signIn,
+        signUp,
+        signOut,
+        resetPassword,
         enrollMFA,
         verifyMFA,
         checkUsageLimits
