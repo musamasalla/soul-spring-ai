@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronRight, Sun, Moon, Home, Settings, Book, Brain, Activity, MessageCircle } from 'lucide-react';
+import { Menu, X, ChevronRight, Sun, Moon, Home, Settings, Book, Brain, Activity, MessageCircle, Inbox, Heart, Users, Bot, Crown, Star, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBar } from '@/components/ui/StatusBar';
 import { cn } from '@/lib/utils';
+import Logo from '@/components/Logo';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -23,9 +25,28 @@ export function AppShell({
   isOffline = false
 }: AppShellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const location = useLocation();
+  
+  // Update window width on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Auto-collapse sidebar on small screens
+  useEffect(() => {
+    if (windowWidth < 1024) {
+      setSidebarExpanded(false);
+    }
+  }, [windowWidth]);
   
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -35,43 +56,77 @@ export function AppShell({
     setIsOpen(false);
   };
 
+  const toggleSidebarExpansion = () => {
+    setSidebarExpanded(!sidebarExpanded);
+  };
+
   // Define navigation items
   const navigationItems = [
-    { 
-      name: 'Dashboard', 
-      href: '/dashboard', 
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
       icon: Home,
-      description: 'Your personal health dashboard'
+      description: 'Overview of your wellness journey'
     },
-    { 
-      name: 'Therapy', 
-      href: '/therapy', 
-      icon: Brain,
-      description: 'AI-assisted therapy sessions'
+    {
+      name: 'Therapy Goals',
+      href: '/therapy',
+      icon: CheckCircle2,
+      description: 'Manage therapy goals and sessions'
     },
-    { 
-      name: 'Meditation', 
-      href: '/meditation', 
+    {
+      name: 'Mood History',
+      href: '/mood-history',
       icon: Activity,
-      description: 'Guided meditation practices'
+      description: 'Track your mood over time'
     },
-    { 
-      name: 'Journal', 
-      href: '/journal', 
+    {
+      name: 'AI Therapy',
+      href: '/ai-therapy',
+      icon: Bot,
+      description: 'Advanced AI-powered therapy sessions'
+    },
+    {
+      name: 'Meditation',
+      href: '/meditation',
+      icon: Heart,
+      description: 'Guided meditation exercises'
+    },
+    {
+      name: 'Programs',
+      href: '/meditation-programs',
+      icon: Star,
+      description: 'Structured meditation programs'
+    },
+    {
+      name: 'Journal',
+      href: '/journal',
+      icon: Inbox,
+      description: 'Write and reflect on your thoughts'
+    },
+    {
+      name: 'Community',
+      href: '/community',
+      icon: Users,
+      description: 'Connect with supportive community'
+    },
+    {
+      name: 'Recommendations',
+      href: '/recommendations',
       icon: Book,
-      description: 'Reflective journaling'
+      description: 'Personalized mental health recommendations'
     },
-    { 
-      name: 'Chat', 
-      href: '/chat', 
-      icon: MessageCircle,
-      description: 'Talk with your AI assistant'
+    {
+      name: 'Premium',
+      href: '/premium',
+      icon: Crown,
+      description: 'Upgrade to premium features'
     },
-    { 
-      name: 'Settings', 
-      href: '/settings', 
+    {
+      name: 'Settings',
+      href: '/settings',
       icon: Settings,
-      description: 'Customize your experience'
+      description: 'App and account settings'
     }
   ];
   
@@ -117,29 +172,63 @@ export function AppShell({
     hover: { y: -2 }
   };
   
+  // Handle sidebar expansion on mouse events for desktop
+  const handleMouseEnter = () => {
+    if (!sidebarExpanded) {
+      setSidebarExpanded(true);
+    }
+  };
+  
+  const handleMouseLeave = () => {
+    if (!isOpen) {
+      setSidebarExpanded(false);
+    }
+  };
+  
+  // Handle window resize to auto-collapse on smaller screens
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarExpanded(false);
+      } else {
+        setSidebarExpanded(true);
+      }
+    };
+    
+    // Set initial state
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  }, [location.pathname]);
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="border-b sticky top-0 z-30 w-full backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="flex items-center space-x-4 lg:space-x-0">
+        <div className="container flex h-14 items-center px-3 sm:px-4">
+          <div className="flex items-center space-x-3 lg:space-x-0">
             {showNav && (
-              <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
-                <Menu className="h-6 w-6" />
+              <Button variant="ghost" size="icon" onClick={toggleSidebar} className="touch-target -ml-2 lg:hidden">
+                <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             )}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center">
-                <Brain className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg">Tranquil Mind</span>
+              <Logo size="sm" showText={true} />
             </Link>
           </div>
           
           <div className="flex-1" />
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Theme toggle */}
             <ThemeToggle />
             
@@ -173,153 +262,134 @@ export function AppShell({
         )}
       </AnimatePresence>
       
-      {/* Mobile navigation sidebar */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.aside
-            className="fixed top-0 left-0 z-50 h-screen w-3/4 max-w-xs bg-card border-r shadow-lg lg:hidden"
-            initial="closed"
-            animate="open"
-            exit="closed"
-            variants={sidebarVariants}
-          >
-            <div className="flex h-14 items-center border-b px-4">
-              <Link to="/" className="flex items-center space-x-2" onClick={closeSidebar}>
-                <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center">
-                  <Brain className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="font-bold text-lg">Tranquil Mind</span>
-              </Link>
-              <div className="flex-1" />
-              <Button variant="ghost" size="icon" onClick={closeSidebar}>
-                <X className="h-5 w-5" />
-                <span className="sr-only">Close menu</span>
-              </Button>
-            </div>
+      {/* Layout with conditional sidebar */}
+      <div className="flex flex-1">
+        {/* Sidebar for larger screens */}
+        {showNav && (
+          <>
+            {/* Mobile sidebar */}
+            <AnimatePresence>
+              {isOpen && (
+                <motion.aside
+                  className="fixed inset-y-0 left-0 z-50 w-3/4 max-w-[280px] bg-background border-r shadow-lg lg:hidden overflow-y-auto"
+                  initial="closed"
+                  animate="open"
+                  exit="closed"
+                  variants={sidebarVariants}
+                >
+                  <div className="flex items-center justify-between h-14 px-4 border-b">
+                    <Link to="/" className="flex items-center space-x-2" onClick={closeSidebar}>
+                      <Logo size="sm" showText={true} />
+                    </Link>
+                    <Button variant="ghost" size="icon" onClick={closeSidebar} className="touch-target">
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                  
+                  <div className="py-2">
+                    <div className="px-3 py-2">
+                      {navigationItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          onClick={closeSidebar}
+                          className={cn(
+                            "flex items-center py-3 px-3 rounded-md mb-1 touch-target",
+                            "hover:bg-secondary/50 transition-colors",
+                            location.pathname === item.href
+                              ? "bg-secondary text-secondary-foreground font-medium"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          <item.icon className="h-5 w-5 mr-3 shrink-0" />
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </motion.aside>
+              )}
+            </AnimatePresence>
             
-            <nav className="space-y-1 p-4">
-              {navigationItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link 
-                    key={item.name} 
-                    to={item.href}
-                    onClick={closeSidebar}
-                    className={cn(
-                      "flex items-center space-x-3 rounded-md px-3 py-2.5 text-sm font-medium",
-                      isActive 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.name}</span>
-                    {isActive && (
-                      <ChevronRight className="ml-auto h-4 w-4" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-            
-            {user && (
-              <div className="absolute bottom-0 left-0 right-0 border-t p-4">
+            {/* Desktop sidebar - collapsible */}
+            <aside 
+              className={cn(
+                "fixed top-14 z-30 h-[calc(100vh-3.5rem)] border-r shrink-0 overflow-y-auto transition-all duration-300",
+                "hidden lg:block",
+                sidebarExpanded ? "w-64" : "w-16"
+              )}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className="flex justify-end p-2">
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-muted-foreground"
-                  onClick={logout}
+                  size="sm" 
+                  className="h-6 w-6 p-0 rounded-full"
+                  onClick={toggleSidebarExpansion}
                 >
-                  <span>Log out</span>
+                  {sidebarExpanded ? (
+                    <ChevronLeft className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-            )}
-          </motion.aside>
-        )}
-      </AnimatePresence>
-      
-      {/* Desktop sidebar */}
-      {showNav && (
-        <div className="hidden lg:flex">
-          <aside className="fixed top-14 left-0 z-30 h-[calc(100vh-3.5rem)] w-56 border-r">
-            <nav className="space-y-0.5 p-3">
-              <div className="py-2">
-                <p className="text-xs font-medium text-muted-foreground px-3 mb-2">Navigation</p>
-                {navigationItems.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <TooltipProvider key={item.name}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            initial="initial"
-                            whileHover="hover"
-                            variants={navItemVariants}
+              
+              <nav className="grid gap-1 p-2">
+                {navigationItems.map((item) => (
+                  <TooltipProvider key={item.name}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <motion.div
+                          initial="initial"
+                          whileHover="hover"
+                          variants={navItemVariants}
+                        >
+                          <Link
+                            to={item.href}
+                            className={cn(
+                              "flex items-center py-3 rounded-md transition-colors overflow-hidden whitespace-nowrap",
+                              sidebarExpanded ? "px-4" : "px-0 justify-center",
+                              location.pathname === item.href
+                                ? "bg-secondary text-secondary-foreground font-medium"
+                                : "text-muted-foreground hover:bg-secondary/50"
+                            )}
                           >
-                            <Link 
-                              to={item.href}
-                              className={cn(
-                                "flex items-center space-x-3 rounded-md px-3 py-2.5 text-sm font-medium",
-                                isActive 
-                                  ? "bg-primary/10 text-primary" 
-                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                              )}
-                            >
-                              <item.icon className="h-5 w-5" />
-                              <span>{item.name}</span>
-                              {isActive && (
-                                <ChevronRight className="ml-auto h-4 w-4" />
-                              )}
-                            </Link>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
+                            <item.icon className={cn(
+                              "h-5 w-5 shrink-0",
+                              sidebarExpanded ? "mr-3" : "mr-0"
+                            )} />
+                            <span className={cn(
+                              "transition-opacity duration-200",
+                              sidebarExpanded ? "opacity-100" : "opacity-0 w-0"
+                            )}>
+                              {item.name}
+                            </span>
+                          </Link>
+                        </motion.div>
+                      </TooltipTrigger>
+                      {!sidebarExpanded && (
+                        <TooltipContent side="right" align="center" className="max-w-[200px]">
                           {item.description}
                         </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })}
-              </div>
-            </nav>
-            
-            {/* User section */}
-            {user && (
-              <div className="absolute bottom-0 left-0 right-0 border-t p-3">
-                <div className="flex items-center space-x-3 px-3 py-2">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start text-muted-foreground mt-2"
-                  onClick={logout}
-                >
-                  <span>Log out</span>
-                </Button>
-              </div>
-            )}
-          </aside>
-          
-          {/* Main content with sidebar margin */}
-          <div className="ml-56 w-full">
-            <main className="flex-1">{children}</main>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                ))}
+              </nav>
+            </aside>
+          </>
+        )}
+        
+        {/* Main content */}
+        <main className="flex-1 overflow-hidden">
+          {isOffline && <StatusBar isOffline={isOffline} />}
+          <div className="relative lg:pl-16">
+            {children}
           </div>
-        </div>
-      )}
-      
-      {/* Mobile and no-sidebar layout */}
-      <div className={cn("flex-1", showNav ? "lg:hidden" : "")}>
-        <main className="flex-1">{children}</main>
+        </main>
       </div>
-      
-      {/* Status bar for offline mode */}
-      <StatusBar isOffline={isOffline} />
     </div>
   );
 } 

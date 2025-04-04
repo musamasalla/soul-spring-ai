@@ -538,6 +538,168 @@ export type Database = {
           }
         ]
       }
+      therapy_goals: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          status: 'not_started' | 'in_progress' | 'completed'
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          status?: 'not_started' | 'in_progress' | 'completed'
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          status?: 'not_started' | 'in_progress' | 'completed'
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapy_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      therapy_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          summary: string | null
+          notes: string | null
+          duration: number | null
+          date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          summary?: string | null
+          notes?: string | null
+          duration?: number | null
+          date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          summary?: string | null
+          notes?: string | null
+          duration?: number | null
+          date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "therapy_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      session_goals: {
+        Row: {
+          id: string
+          session_id: string
+          goal_id: string
+          progress: 'not_started' | 'in_progress' | 'completed' | 'good'
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          goal_id: string
+          progress?: 'not_started' | 'in_progress' | 'completed' | 'good'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          goal_id?: string
+          progress?: 'not_started' | 'in_progress' | 'completed' | 'good'
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_goals_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "therapy_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_goals_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "therapy_goals"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      tts_usage: {
+        Row: {
+          id: string
+          user_id: string
+          characters: number
+          date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          characters: number
+          date: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          characters?: number
+          date?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tts_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
     }
     Views: {
       mood_statistics: {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2, PlusCircle, Calendar, Search, FileText, Trash2, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import Header from "@/components/Header";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { JournalEntry, NewJournalEntry } from "@/types/journal";
@@ -180,10 +179,8 @@ const JournalPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container mx-auto p-4 pt-6">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <main className="flex-1 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Journal</h1>

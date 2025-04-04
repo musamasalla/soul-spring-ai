@@ -5,7 +5,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { MeditationData } from "@/types/meditation";
 import { saveMoodRecord } from "@/services/sessionService";
 import { toast } from "sonner";
-import { Loader2, Brain, HeartPulse, MessageSquare, BarChart2, ExternalLink, AlertTriangle } from "lucide-react";
+import { 
+  Loader2, 
+  Brain, 
+  HeartPulse, 
+  MessageSquare, 
+  BarChart2, 
+  ExternalLink, 
+  AlertTriangle,
+  Smile,
+  Heart,
+  ThumbsUp,
+  Meh,
+  Frown,
+  Zap,
+  Wind,
+  Moon,
+  CloudFog
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { EmotionData } from "./EmotionDetector";
@@ -16,20 +33,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smile, Clock, Calendar, ArrowRight, Sparkles } from "lucide-react";
+import { Clock, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import { useMoodStore } from "@/stores/moodStore";
 import { useToast } from "@/components/ui/use-toast";
 
-// Mood options with emojis
+// Mood options with professional icons instead of emojis
 const MOOD_OPTIONS = [
-  { value: "very_happy", emoji: "😊", label: "Very Happy" },
-  { value: "happy", emoji: "🙂", label: "Happy" },
-  { value: "neutral", emoji: "😐", label: "Neutral" },
-  { value: "calm", emoji: "😌", label: "Calm" },
-  { value: "refreshed", emoji: "🧘", label: "Refreshed" },
-  { value: "sleepy", emoji: "😴", label: "Sleepy" },
-  { value: "anxious", emoji: "😟", label: "Anxious" },
-  { value: "sad", emoji: "😢", label: "Sad" }
+  { value: "very_happy", icon: ThumbsUp, label: "Very Happy", color: "text-green-500" },
+  { value: "happy", icon: Smile, label: "Happy", color: "text-green-400" },
+  { value: "neutral", icon: Meh, label: "Neutral", color: "text-gray-500" },
+  { value: "calm", icon: Wind, label: "Calm", color: "text-blue-400" },
+  { value: "refreshed", icon: Zap, label: "Refreshed", color: "text-purple-500" },
+  { value: "sleepy", icon: Moon, label: "Sleepy", color: "text-indigo-400" },
+  { value: "anxious", icon: CloudFog, label: "Anxious", color: "text-amber-500" },
+  { value: "sad", icon: Frown, label: "Sad", color: "text-blue-500" }
 ];
 
 // Map emotion categories to mood options for better suggestions
@@ -285,9 +302,11 @@ export default function MoodTracker({
     }
   };
 
-  const getMoodEmoji = (mood: string) => {
-    const foundMood = MOOD_OPTIONS.find(option => option.value === mood);
-    return foundMood ? foundMood.emoji : '😐';
+  const getMoodIcon = (mood: string) => {
+    const option = MOOD_OPTIONS.find(o => o.value === mood);
+    if (!option) return <Meh className="h-5 w-5 text-gray-500" />;
+    const Icon = option.icon;
+    return <Icon className={`h-5 w-5 ${option.color}`} />;
   };
   
   // Calculate if mood selection matches detected emotion
@@ -534,7 +553,9 @@ export default function MoodTracker({
                       onClick={() => handleSelectMood(option.value)}
                     >
                       <div className="flex flex-col items-center">
-                        <span className="text-lg">{option.emoji}</span>
+                        <div className="flex justify-center items-center h-10">
+                          {getMoodIcon(option.value)}
+                        </div>
                       </div>
                     </Button>
                   </TooltipTrigger>
@@ -626,13 +647,13 @@ export default function MoodTracker({
                 </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="emoji" className="mb-6">
-          <TabsList className="grid grid-cols-2 mb-4">
-            <TabsTrigger value="emoji">Emoji Selection</TabsTrigger>
-            <TabsTrigger value="scale">Mood Scale</TabsTrigger>
+        <Tabs defaultValue="mood" className="mb-6">
+          <TabsList>
+            <TabsTrigger value="mood">Mood Selection</TabsTrigger>
+            <TabsTrigger value="history">Mood History</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="emoji">
+          <TabsContent value="mood">
             <div className="grid grid-cols-4 gap-3">
               {MOOD_OPTIONS.map((option) => (
                 <TooltipProvider key={option.value}>
@@ -646,7 +667,9 @@ export default function MoodTracker({
                         onClick={() => handleSelectMood(option.value)}
                       >
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-3xl">{option.emoji}</span>
+                          <div className="flex justify-center items-center h-10">
+                            {getMoodIcon(option.value)}
+                          </div>
                           <span className="text-xs">{option.label}</span>
                           {isMoodSuggested(option.value) && (
                             <Badge variant="outline" className="text-[10px] px-1 py-0">Suggested</Badge>
@@ -667,41 +690,8 @@ export default function MoodTracker({
             </div>
           </TabsContent>
           
-          <TabsContent value="scale">
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center px-2">
-                <span className="text-sm">Very Unhappy</span>
-                <span className="text-sm">Very Happy</span>
-              </div>
-              <div className="grid grid-cols-8 gap-2">
-                {[
-                  { value: "sad", color: "bg-red-500" },
-                  { value: "anxious", color: "bg-orange-500" },
-                  { value: "sleepy", color: "bg-yellow-500" },
-                  { value: "neutral", color: "bg-lime-500" },
-                  { value: "calm", color: "bg-green-500" },
-                  { value: "refreshed", color: "bg-teal-500" },
-                  { value: "happy", color: "bg-blue-500" },
-                  { value: "very_happy", color: "bg-violet-500" },
-                ].map((option, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className={`h-12 p-0 ${selectedMood === option.value ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => handleSelectMood(option.value)}
-                  >
-                    <div className={`w-full h-3 rounded-full ${option.color}`} />
-                  </Button>
-                ))}
-              </div>
-              <div className="text-center mt-2">
-                {selectedMood && (
-                  <Badge className="mb-2">
-                    {MOOD_OPTIONS.find(o => o.value === selectedMood)?.label || selectedMood}
-                  </Badge>
-                )}
-              </div>
-            </div>
+          <TabsContent value="history">
+            {/* History content */}
           </TabsContent>
         </Tabs>
         

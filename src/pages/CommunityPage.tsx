@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import Header from "@/components/Header";
 import { Filter, Search, Users, Send, AlertTriangle, Loader2, Shield, Settings } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
 import { EnhancedPost, CommunityCategory } from "@/types/community";
@@ -198,7 +197,6 @@ const CommunityPage = () => {
   if (isLoadingSettings) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <main className="container mx-auto p-4 pt-6">
           <div className="flex justify-center items-center min-h-[60vh]">
             <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -211,7 +209,6 @@ const CommunityPage = () => {
   if (communitySettings.disable_community) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <main className="container mx-auto p-4 pt-6">
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-md mx-auto">
             <Shield className="h-16 w-16 text-muted-foreground mb-4" />
@@ -235,10 +232,8 @@ const CommunityPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container mx-auto p-4 pt-6">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <main className="flex-1 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Community</h1>

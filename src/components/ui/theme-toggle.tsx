@@ -13,9 +13,20 @@ export function ThemeToggle() {
     setIsMounted(true)
   }, [])
 
-  // Handle theme toggle
+  // Handle theme toggle - improved to handle system theme
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    if (theme === 'dark') {
+      setTheme('light')
+    } else if (theme === 'light') {
+      setTheme('dark')
+    } else if (theme === 'system') {
+      // If system theme is active, switch to explicitly light or dark
+      // based on current system preference
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'light' // If system is dark, switch to light
+        : 'dark'  // If system is light, switch to dark
+      setTheme(systemTheme)
+    }
   }
 
   // Sunbeam animation variants
@@ -85,7 +96,7 @@ export function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       className="relative w-9 h-9 rounded-full"
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : theme === 'light' ? 'dark' : 'system'} theme`}
     >
       <motion.div
         className="absolute inset-0 flex items-center justify-center"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Header from "@/components/Header";
+// import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import MeditationPlayer from "@/components/MeditationPlayer";
 import { MeditationData } from "@/types/meditation";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import AImeditationGenerator from "@/components/AImeditationGenerator";
 import MeditationHistory from "@/components/MeditationHistory";
 import MeditationFavorites from "@/components/MeditationFavorites";
@@ -298,7 +298,7 @@ const MeditationPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Header />
+      {/* <Header /> */}
       
       <main className="flex-1 p-4 md:p-6">
         <div className="max-w-7xl mx-auto">

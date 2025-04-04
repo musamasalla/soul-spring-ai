@@ -10,8 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import Header from "@/components/Header";
-import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Loader2, QrCode, KeyRound, Check, Moon, Sun, Shield, AlertTriangle } from "lucide-react";
@@ -249,10 +247,8 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container mx-auto p-4 py-8">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <main className="flex-1 p-4 md:p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account settings and preferences</p>

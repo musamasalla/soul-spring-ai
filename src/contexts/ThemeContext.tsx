@@ -28,9 +28,13 @@ export function ThemeProvider({
   storageKey = 'tranquil-mind-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    const savedTheme = localStorage.getItem(storageKey);
+    if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
+      return savedTheme;
+    }
+    return defaultTheme;
+  });
   
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -48,7 +52,9 @@ export function ThemeProvider({
       
       root.classList.add(systemTheme);
       setSystemTheme(systemTheme);
+      console.log('Applying system theme:', systemTheme);
     } else {
+      console.log('Applying explicit theme:', theme);
       root.classList.add(theme);
     }
   }, [theme]);
@@ -61,22 +67,27 @@ export function ThemeProvider({
       if (theme === 'system') {
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(newSystemTheme);
+        console.log('System theme changed to:', newSystemTheme);
       }
     };
     
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
     
-    return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
-    };
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    } else {
+      mediaQuery.addListener(handleSystemThemeChange);
+      return () => mediaQuery.removeListener(handleSystemThemeChange);
+    }
   }, [theme]);
   
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (newTheme: Theme) => {
+      console.log('Setting theme to:', newTheme);
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
     },
     systemTheme,
   };

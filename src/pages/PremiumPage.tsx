@@ -1,8 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,10 +59,8 @@ const PremiumPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container mx-auto p-4 py-8">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <main className="flex-1 p-4 md:p-6">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold mb-4">Upgrade Your Well-being Journey</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

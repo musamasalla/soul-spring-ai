@@ -2,10 +2,64 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://ryjawoplxfttnsuznssi.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5amF3b3BseGZ0dG5zdXpuc3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1MTE4NzIsImV4cCI6MjA1OTA4Nzg3Mn0.qvvjbZKo05FWnTJ89dRyl9Z2ob6_AZeQlixHZXUiYRE";
+// Initialize the Supabase client with direct values
+const supabaseUrl = "https://ryjawoplxfttnsuznssi.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5amF3b3BseGZ0dG5zdXpuc3NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1MTE4NzIsImV4cCI6MjA1OTA4Nzg3Mn0.qvvjbZKo05FWnTJ89dRyl9Z2ob6_AZeQlixHZXUiYRE";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Create the Supabase client with enhanced debugging
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+  },
+});
+
+/**
+ * Execute a Supabase query with enhanced error handling
+ * @param queryFn Function that returns a Supabase query
+ * @returns Promise with data and error properties
+ */
+export async function safeQuery<T>(queryFn: () => Promise<any>): Promise<{ data: T | null; error: any }> {
+  try {
+    console.log('Supabase request:', queryFn.toString().split('{')[0]);
+    const response = await queryFn();
+    
+    if (response.error) {
+      // Supabase query error
+      console.error('Supabase query error:', response.error);
+      return { data: null, error: response.error };
+    }
+    
+    return { data: response.data as T, error: null };
+  } catch (err) {
+    // Unexpected error (network, etc.)
+    console.error('Unexpected error in Supabase query:', err);
+    return { 
+      data: null, 
+      error: err instanceof Error ? err.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Extract a user-friendly error message from Supabase errors
+ */
+export function extractErrorMessage(error: any): string {
+  if (!error) return 'Unknown error';
+  
+  // Handle string errors
+  if (typeof error === 'string') return error;
+  
+  // Handle database errors with code and message
+  if (error.code && error.message) {
+    return `Database error: ${error.message} (Code: ${error.code})`;
+  }
+  
+  // Handle other error objects
+  if (error.message) return error.message;
+  
+  // Fallback
+  return JSON.stringify(error);
+}

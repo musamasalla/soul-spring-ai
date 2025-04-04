@@ -9,8 +9,11 @@ export default function DashboardLayout({
   const { isUsingFallbackData } = useTherapyData();
   
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <StatusBar isOffline={isUsingFallbackData} />
-    </>
+      <div className="flex-1">
+        {children}
+      </div>
+    </div>
   );
 } 

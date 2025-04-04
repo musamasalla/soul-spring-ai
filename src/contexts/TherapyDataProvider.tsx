@@ -1,7 +1,41 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useUser } from '@supabase/auth-helpers-react';
-import { supabase } from '@/utils/supabaseClient';
+import { supabase, safeQuery, extractErrorMessage } from '@/integrations/supabase/client';
 import { TherapyGoal, TherapySession, SessionGoal } from '@/types/therapy';
+import { toast } from 'sonner';
+
+// Create the context
+interface TherapyDataContextType {
+  therapyGoals: TherapyGoal[];
+  therapySessions: TherapySession[];
+  sessionGoals: SessionGoal[];
+  isLoading: boolean;
+  error: string | null;
+  isUsingFallbackData: boolean;
+  addTherapyGoal: (goal: Omit<TherapyGoal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTherapyGoal: (goal: TherapyGoal) => Promise<void>;
+  deleteTherapyGoal: (goalId: string) => Promise<void>;
+  addTherapySession: (session: Omit<TherapySession, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTherapySession: (session: TherapySession) => Promise<void>;
+  deleteTherapySession: (sessionId: string) => Promise<void>;
+  addSessionGoal: (sessionGoal: Omit<SessionGoal, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateSessionGoal: (sessionGoal: SessionGoal) => Promise<void>;
+  deleteSessionGoal: (sessionGoalId: string) => Promise<void>;
+  refreshData: () => Promise<void>;
+}
+
+// Rename the context to avoid HMR issues
+const TherapyDataContextInternal = createContext<TherapyDataContextType | undefined>(undefined);
+
+// Create a custom hook to use the TherapyData context
+// Use function declaration instead of arrow function for better HMR compatibility
+export function useTherapyData() {
+  const context = useContext(TherapyDataContextInternal);
+  if (context === undefined) {
+    throw new Error('useTherapyData must be used within a TherapyDataProvider');
+  }
+  return context;
+}
 
 // Fallback mock data for when database connection fails
 const MOCK_THERAPY_GOALS: TherapyGoal[] = [
@@ -73,8 +107,6 @@ const MOCK_THERAPY_SESSIONS: TherapySession[] = [
   }
 ];
 
-// ... existing code ...
-
 export function TherapyDataProvider({ children }: { children: ReactNode }) {
   const [therapyGoals, setTherapyGoals] = useState<TherapyGoal[]>([]);
   const [therapySessions, setTherapySessions] = useState<TherapySession[]>([]);
@@ -84,78 +116,52 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
   const [isUsingFallbackData, setIsUsingFallbackData] = useState(false);
   const user = useUser();
 
-  useEffect(() => {
+  const loadData = async () => {
     if (!user) {
       setIsLoading(false);
       return;
     }
-
-    const loadTherapyData = async () => {
-      setIsLoading(true);
-      setError(null);
-      setIsUsingFallbackData(false);
-      
-      try {
-        // Fetch therapy goals
-        const { data: goalsData, error: goalsError } = await supabase
+    
+    setIsLoading(true);
+    setError(null);
+    setIsUsingFallbackData(false);
+    
+    console.log('Loading therapy data for user:', user.id);
+    
+    try {
+      // Fetch therapy goals with enhanced error handling
+      const { data: goalsData, error: goalsError } = await safeQuery(() => 
+        supabase
           .from('therapy_goals')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+      );
 
-        // Fetch therapy sessions
-        const { data: sessionsData, error: sessionsError } = await supabase
+      // Fetch therapy sessions
+      const { data: sessionsData, error: sessionsError } = await safeQuery(() => 
+        supabase
           .from('therapy_sessions')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+      );
 
-        // Fetch session goals
-        const { data: sessionGoalsData, error: sessionGoalsError } = await supabase
+      // Fetch session goals
+      const { data: sessionGoalsData, error: sessionGoalsError } = await safeQuery(() => 
+        supabase
           .from('session_goals')
-          .select('*');
+          .select('*')
+      );
 
-        // Check for database connection errors
-        if (goalsError || sessionsError || sessionGoalsError) {
-          console.warn('Database connection issues detected, using fallback data:', { 
-            goalsError, sessionsError, sessionGoalsError 
-          });
-          
-          // Use fallback data with current user ID
-          const fallbackGoals = MOCK_THERAPY_GOALS.map(goal => ({
-            ...goal,
-            user_id: user.id
-          }));
-          
-          const fallbackSessions = MOCK_THERAPY_SESSIONS.map(session => ({
-            ...session,
-            user_id: user.id
-          }));
-          
-          // Create mock session goals connections (simple 1:1 matching)
-          const fallbackSessionGoals = fallbackSessions.map((session, index) => ({
-            id: `00000000-0000-0000-0000-00000000000${index + 1}`,
-            session_id: session.id,
-            goal_id: fallbackGoals[index % fallbackGoals.length].id,
-            progress: Math.random() > 0.5 ? 'good' : 'in_progress',
-            notes: 'Auto-generated fallback data',
-            created_at: session.created_at,
-            updated_at: session.updated_at
-          }));
-          
-          setTherapyGoals(fallbackGoals);
-          setTherapySessions(fallbackSessions);
-          setSessionGoals(fallbackSessionGoals);
-          setIsUsingFallbackData(true);
-        } else {
-          // Use real data from database
-          setTherapyGoals(goalsData || []);
-          setTherapySessions(sessionsData || []);
-          setSessionGoals(sessionGoalsData || []);
-        }
-      } catch (err) {
-        console.error('Error loading therapy data:', err);
-        setError('Failed to load therapy data. Please try again later.');
+      // Check for database connection errors
+      if (goalsError || sessionsError || sessionGoalsError) {
+        console.warn('Database connection issues detected, using fallback data:', { 
+          goalsError, sessionsError, sessionGoalsError 
+        });
         
-        // Fallback to mock data on any unexpected error
+        // Toast notification for user
+        toast.error('Unable to connect to database. Using offline data.');
+        
+        // Use fallback data with current user ID
         const fallbackGoals = MOCK_THERAPY_GOALS.map(goal => ({
           ...goal,
           user_id: user.id
@@ -166,22 +172,185 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
           user_id: user.id
         }));
         
+        // Create mock session goals connections (simple 1:1 matching)
+        const fallbackSessionGoals = fallbackSessions.map((session, index) => ({
+          id: `00000000-0000-0000-0000-00000000000${index + 1}`,
+          session_id: session.id,
+          goal_id: fallbackGoals[index % fallbackGoals.length].id,
+          progress: Math.random() > 0.5 ? 'good' : 'in_progress',
+          notes: 'Auto-generated fallback data',
+          created_at: session.created_at,
+          updated_at: session.updated_at
+        })) as SessionGoal[];
+        
         setTherapyGoals(fallbackGoals);
         setTherapySessions(fallbackSessions);
-        setSessionGoals([]);
+        setSessionGoals(fallbackSessionGoals);
         setIsUsingFallbackData(true);
-      } finally {
-        setIsLoading(false);
+        
+        // Set error message for display
+        setError('Using offline data due to database connectivity issues');
+      } else {
+        console.log('Successfully loaded therapy data:', {
+          goalsCount: goalsData?.length || 0,
+          sessionsCount: sessionsData?.length || 0,
+          sessionGoalsCount: sessionGoalsData?.length || 0
+        });
+        
+        // If no goals exist but database connection works, initialize with default goals
+        if (goalsData && goalsData.length === 0) {
+          console.log('No therapy goals found, initializing default goals for new user');
+          
+          // Create default goals for new users
+          const defaultGoals = MOCK_THERAPY_GOALS.map(goal => ({
+            user_id: user.id,
+            title: goal.title,
+            description: goal.description,
+            status: goal.status
+          }));
+          
+          // Insert default goals
+          const { data: createdGoals, error: createError } = await safeQuery(() => 
+            supabase
+              .from('therapy_goals')
+              .insert(defaultGoals)
+              .select()
+          );
+          
+          if (createError) {
+            console.error('Failed to create default goals:', createError);
+            toast.error('Failed to initialize default therapy goals');
+          } else if (createdGoals) {
+            console.log('Successfully created default goals:', createdGoals.length);
+            toast.success('Initialized your therapy dashboard with starter goals');
+            setTherapyGoals(createdGoals);
+          }
+        } else {
+          // Use real data from database
+          setTherapyGoals(goalsData || []);
+        }
+        
+        setTherapySessions(sessionsData || []);
+        setSessionGoals(sessionGoalsData || []);
       }
-    };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error loading therapy data:', errorMessage, err);
+      setError(`Failed to load therapy data: ${errorMessage}`);
+      toast.error('Error loading therapy data. Using offline data instead.');
+      
+      // Fallback to mock data on any unexpected error
+      const fallbackGoals = MOCK_THERAPY_GOALS.map(goal => ({
+        ...goal,
+        user_id: user.id
+      }));
+      
+      const fallbackSessions = MOCK_THERAPY_SESSIONS.map(session => ({
+        ...session,
+        user_id: user.id
+      }));
+      
+      setTherapyGoals(fallbackGoals);
+      setTherapySessions(fallbackSessions);
+      setSessionGoals([]);
+      setIsUsingFallbackData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadTherapyData();
+  useEffect(() => {
+    loadData();
   }, [user]);
 
-  // ... existing code ...
+  // Add necessary functions for data manipulation
+  const refreshData = async () => {
+    await loadData();
+    toast.success('Data refreshed');
+  };
+  
+  const addTherapyGoal = async (goalData: Omit<TherapyGoal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) return;
+    
+    // Optimistic update
+    const tempId = `temp-${Date.now()}`;
+    const newGoal: TherapyGoal = {
+      id: tempId,
+      user_id: user.id,
+      ...goalData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      completed_at: null
+    };
+    
+    setTherapyGoals(prev => [...prev, newGoal]);
+    
+    try {
+      // Save to database
+      const { data, error } = await safeQuery(() => 
+        supabase
+          .from('therapy_goals')
+          .insert([{
+            user_id: user.id,
+            ...goalData,
+          }])
+          .select()
+      );
+      
+      if (error) {
+        // Revert optimistic update
+        setTherapyGoals(prev => prev.filter(g => g.id !== tempId));
+        toast.error(`Error adding goal: ${error}`);
+        return;
+      }
+      
+      // Update with real database data
+      if (data && data.length > 0) {
+        setTherapyGoals(prev => prev.map(g => g.id === tempId ? data[0] : g));
+        toast.success('Goal added successfully');
+      }
+    } catch (err) {
+      // Revert optimistic update
+      setTherapyGoals(prev => prev.filter(g => g.id !== tempId));
+      toast.error('Failed to add goal');
+      console.error('Error adding therapy goal:', err);
+    }
+  };
+  
+  const updateTherapyGoal = async (goal: TherapyGoal) => {
+    // Implementation
+  };
+  
+  const deleteTherapyGoal = async (goalId: string) => {
+    // Implementation
+  };
+  
+  const addTherapySession = async (session: Omit<TherapySession, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    // Implementation
+  };
+  
+  const updateTherapySession = async (session: TherapySession) => {
+    // Implementation
+  };
+  
+  const deleteTherapySession = async (sessionId: string) => {
+    // Implementation
+  };
+  
+  const addSessionGoal = async (sessionGoal: Omit<SessionGoal, 'id' | 'created_at' | 'updated_at'>) => {
+    // Implementation
+  };
+  
+  const updateSessionGoal = async (sessionGoal: SessionGoal) => {
+    // Implementation
+  };
+  
+  const deleteSessionGoal = async (sessionGoalId: string) => {
+    // Implementation
+  };
 
   return (
-    <TherapyDataContext.Provider
+    <TherapyDataContextInternal.Provider
       value={{
         therapyGoals,
         therapySessions,
@@ -189,6 +358,7 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         isUsingFallbackData,
+        refreshData,
         addTherapyGoal,
         updateTherapyGoal,
         deleteTherapyGoal,
@@ -197,11 +367,10 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
         deleteTherapySession,
         addSessionGoal,
         updateSessionGoal,
-        deleteSessionGoal,
-        refreshData
+        deleteSessionGoal
       }}
     >
       {children}
-    </TherapyDataContext.Provider>
+    </TherapyDataContextInternal.Provider>
   );
 } 

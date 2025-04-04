@@ -1,0 +1,277 @@
+/* Global Responsive Styles */
+
+/* Base responsive adjustments */
+.responsive-container {
+  width: 100%;
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-container {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    padding: 1.5rem;
+  }
+}
+
+/* Mobile-friendly typography */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+  
+  h3 {
+    font-size: 1.125rem !important;
+    line-height: 1.5rem !important;
+  }
+  
+  p {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Mobile-friendly components */
+@media (max-width: 640px) {
+  /* Cards */
+  .card-content-mobile {
+    padding: 0.75rem !important;
+  }
+  
+  /* Buttons */
+  .button-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .button-row > * {
+    width: 100%;
+  }
+  
+  /* Forms */
+  .form-field-mobile {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* Navigation */
+  .mobile-nav-item {
+    padding: 0.5rem !important;
+  }
+}
+
+/* Tabs overflow handling */
+.scrollable-tabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer and Edge */
+}
+
+.scrollable-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+.tabs-container {
+  display: flex;
+  white-space: nowrap;
+  padding-bottom: 4px;
+}
+
+/* Mobile-friendly grids */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile-friendly dialogs */
+@media (max-width: 640px) {
+  .dialog-content-mobile {
+    padding: 1rem !important;
+    width: calc(100% - 2rem) !important;
+    max-width: none !important;
+  }
+}
+
+/* Touch-friendly interactive elements */
+@media (max-width: 640px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent text overflow */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Responsive flex layouts */
+.responsive-flex {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 640px) {
+  .responsive-flex {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Mobile-friendly spacing */
+.mobile-spacing > * + * {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-spacing > * + * {
+    margin-top: 0;
+    margin-left: 1rem;
+  }
+}
+
+/* Collapsible sidebar responsive handling */
+.sidebar-layout {
+  display: flex;
+  min-height: 100%;
+  width: 100%;
+}
+
+/* Main content area - dynamically adjust based on sidebar state */
+.content-with-sidebar {
+  flex: 1;
+  min-width: 0;
+  transition: margin-left 0.3s ease;
+}
+
+/* Adaptive content container - ensures proper spacing with collapsible sidebar */
+.adaptive-container {
+  max-width: 100%;
+  width: 100%;
+  transition: max-width 0.3s ease;
+}
+
+/* Content card adjustments for smaller screens */
+@media (max-width: 1024px) {
+  .card-sm-spacing {
+    padding: 0.75rem !important;
+  }
+  
+  .card-sm-header {
+    padding-bottom: 0.5rem !important;
+  }
+}
+
+/* Responsive text adjustments for very small screens */
+@media (max-width: 375px) {
+  .xs-text-sm {
+    font-size: 0.813rem !important;
+  }
+  
+  .xs-hide {
+    display: none !important;
+  }
+}
+
+/* Prevent overflow issues in tab content */
+.tab-content-container {
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.tab-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+}
+
+/* Adaptive height containers for sidebar panels */
+.adaptive-height-container {
+  max-height: calc(100vh - 20rem);
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .adaptive-height-container {
+    max-height: calc(100vh - 16rem);
+  }
+}
+
+@media (min-width: 1280px) {
+  .adaptive-height-container {
+    max-height: calc(100vh - 14rem);
+  }
+}
+
+/* Tooltip adjustments for sidebar */
+.sidebar-tooltip {
+  z-index: 100;
+  max-width: 200px;
+}
+
+/* Fix for dialog and popover positioning */
+.fixed-position-dialog {
+  position: fixed !important;
+  z-index: 999 !important;
+}
+
+/* Card sizing constraints to prevent overflow */
+.card-max-width {
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Multi-column layouts with safeguards for smaller screens */
+.multi-col-safe {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .multi-col-safe {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .multi-col-safe {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+/* Ensure content doesn't overflow cards */
+.overflow-guard {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  max-width: 100%;
+} 

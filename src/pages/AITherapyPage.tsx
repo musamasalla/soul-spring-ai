@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import Header from "@/components/Header";
 import EnhancedAIChat from "@/components/EnhancedAIChat";
 import MoodTracker from "@/components/MoodTracker";
 import MoodRecommendations from "@/components/MoodRecommendations";
@@ -7,7 +6,7 @@ import TherapySessionFramework, { therapySessionStages, therapyGoals } from "@/c
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Brain, History, Settings, MessageSquare, User, PlusCircle, Calendar, Timer, Clock, FileText, Heart, BarChart, ArrowRight } from "lucide-react";
+import { Brain, History, Settings, MessageSquare, User, PlusCircle, Calendar, Timer, Clock, FileText, Heart, BarChart, ArrowRight, Plus, MoreVertical, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,11 @@ import { toast } from "sonner";
 import EmotionDetector, { EmotionData } from "@/components/EmotionDetector";
 import TherapyTechniques from "@/components/TherapyTechniques";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useUser } from "@/hooks/useUser";
 
 interface TherapySession {
   id: string;
@@ -27,10 +31,35 @@ interface TherapySession {
   lastUpdated: Date;
   topic: string;
   duration: number; // in minutes
+  currentStage?: string;
+}
+
+// Supabase API schema
+interface SupabaseTherapySession {
+  id: string;
+  user_id: string;
+  title: string;
+  summary?: string;
+  notes?: string;
+  duration: number;
+  date: string;
+  created_at: string;
+  updated_at: string;
+  primary_topic?: string;
+  session_goal?: string;
+  current_stage?: string;
+}
+
+interface TherapySessionDetails {
+  id: string;
+  title: string;
+  currentStage: string;
+  primaryTopic?: string;
 }
 
 const AITherapyPage = () => {
   const { user } = useAuth();
+  const { userData, isLoading } = useUser();
   const [currentStage, setCurrentStage] = useState('opening');
   const [sessionTopics, setSessionTopics] = useState<string[]>([]);
   const [sessionLength, setSessionLength] = useState(30); // default 30 minutes
@@ -46,6 +75,7 @@ const AITherapyPage = () => {
   const [emotionData, setEmotionData] = useState<EmotionData | null>(null);
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [showEmotionSuggestion, setShowEmotionSuggestion] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Track previous emotion to detect significant changes
   const prevEmotionRef = useRef<string | null>(null);
@@ -78,12 +108,13 @@ const AITherapyPage = () => {
       if (error) throw error;
       
       if (data) {
-        setSessions(data.map(session => ({
+        setSessions(data.map((session: SupabaseTherapySession) => ({
           id: session.id,
           title: session.title,
           lastUpdated: new Date(session.updated_at),
           topic: session.primary_topic || 'General',
-          duration: session.duration || 30
+          duration: session.duration || 30,
+          currentStage: session.current_stage
         })));
       }
     } catch (error) {
@@ -108,15 +139,19 @@ const AITherapyPage = () => {
     }
     
     try {
+      const sessionData = {
+        user_id: user?.id,
+        title: newSessionTitle,
+        duration: newSessionDuration,
+        date: new Date().toISOString(),
+        primary_topic: newSessionTopic,
+        session_goal: newSessionGoal,
+        current_stage: 'opening'
+      };
+      
       const { data, error } = await supabase
         .from('therapy_sessions')
-        .insert({
-          user_id: user?.id,
-          title: newSessionTitle,
-          primary_topic: newSessionTopic,
-          session_goal: newSessionGoal,
-          duration: newSessionDuration
-        })
+        .insert(sessionData)
         .select()
         .single();
       
@@ -129,7 +164,8 @@ const AITherapyPage = () => {
           title: data.title,
           lastUpdated: new Date(data.created_at),
           topic: data.primary_topic || 'General',
-          duration: data.duration || 30
+          duration: data.duration || 30,
+          currentStage: data.current_stage
         };
         
         setSessions(prev => [newSession, ...prev]);
@@ -170,8 +206,15 @@ const AITherapyPage = () => {
         setActiveSession(data.id);
         setSessionLength(data.duration || 30);
         setSessionTopics(data.primary_topic ? [data.primary_topic] : []);
-        setCurrentStage(data.current_stage || 'opening');
-        setCompletionPercentage(calculateSessionProgress(data.current_stage || 'opening'));
+        
+        if (data.current_stage) {
+          const stage = data.current_stage as 'opening' | 'assessment' | 'intervention' | 'closing';
+          setCurrentStage(stage);
+          setCompletionPercentage(calculateSessionProgress(stage));
+        } else {
+          setCurrentStage('opening');
+          setCompletionPercentage(calculateSessionProgress('opening'));
+        }
       }
     } catch (error) {
       console.error('Error loading session:', error);
@@ -230,309 +273,277 @@ const AITherapyPage = () => {
     }
   };
   
-  return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <Header />
-      
-      <main className="flex-1 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold">AI Therapy Chat</h1>
-              <p className="text-muted-foreground">
-                Talk to our AI assistant about your mental health concerns in a safe, private space
-              </p>
-            </div>
-            
-            <Dialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
-              <DialogTrigger asChild>
-                <Button className="mt-4 md:mt-0">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Session
-                </Button>
-              </DialogTrigger>
-              
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Create New Therapy Session</DialogTitle>
-                  <DialogDescription>
-                    Set up your session details to get the most out of your therapy experience.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="session-title">Session Title</Label>
-                    <Input
-                      id="session-title"
-                      value={newSessionTitle}
-                      onChange={(e) => setNewSessionTitle(e.target.value)}
-                      placeholder="e.g., Anxiety Management"
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="session-topic">Primary Topic</Label>
-                    <Select value={newSessionTopic} onValueChange={setNewSessionTopic}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a topic" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Anxiety">Anxiety</SelectItem>
-                        <SelectItem value="Depression">Depression</SelectItem>
-                        <SelectItem value="Stress">Stress</SelectItem>
-                        <SelectItem value="Relationships">Relationships</SelectItem>
-                        <SelectItem value="Self-esteem">Self-esteem</SelectItem>
-                        <SelectItem value="Work Issues">Work Issues</SelectItem>
-                        <SelectItem value="Sleep">Sleep</SelectItem>
-                        <SelectItem value="Trauma">Trauma</SelectItem>
-                        <SelectItem value="General">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="session-goal">Session Goal</Label>
-                    <Select 
-                      value={newSessionGoal} 
-                      onValueChange={setNewSessionGoal}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a goal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {therapyGoals.map(goal => (
-                          <SelectItem key={goal} value={goal}>
-                            {goal}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Having a clear goal helps make your session more effective
-                    </p>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="session-duration">Session Duration</Label>
-                    <Select 
-                      value={newSessionDuration.toString()} 
-                      onValueChange={(val) => setNewSessionDuration(parseInt(val))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="15">15 minutes</SelectItem>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="45">45 minutes</SelectItem>
-                        <SelectItem value="60">60 minutes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowNewSessionDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateSession}>
-                    Create Session
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-          {showEmotionSuggestion && emotionData && (
-            <Alert className="mb-4 border-primary/50 bg-primary/10">
-              <Heart className="h-4 w-4 text-primary" />
-              <AlertTitle>Emotion Change Detected</AlertTitle>
-              <AlertDescription className="flex justify-between items-center">
-                <div>
-                  I noticed you're feeling <span className="font-medium capitalize">{emotionData.primaryEmotion}</span>.
-                  Would you like to track this in your mood history?
-                </div>
-                <Button 
-                  size="sm" 
-                  className="ml-4"
-                  onClick={() => {
-                    setActiveTab("mood");
-                    setShowEmotionSuggestion(false);
-                  }}
-                >
-                  Track Mood
-                  <ArrowRight className="ml-2 h-3 w-3" />
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
-                  <TabsTrigger value="chat" className="flex items-center gap-1">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Therapy Chat</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="analysis" className="flex items-center gap-1">
-                    <BarChart className="h-4 w-4" />
-                    <span>Emotional Analysis</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="techniques" className="flex items-center gap-1">
-                    <Brain className="h-4 w-4" />
-                    <span>Techniques</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="session" className="flex items-center gap-1">
-                    <Settings className="h-4 w-4" />
-                    <span>Session</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="mood" className="flex items-center gap-1">
-                    <Heart className="h-4 w-4" />
-                    <span>Mood</span>
-                    {showEmotionSuggestion && (
-                      <Badge className="ml-1 bg-primary text-primary-foreground">New</Badge>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="chat" className="focus-visible:outline-none focus-visible:ring-0">
-                  <Card>
-                    <CardContent className="p-0">
-                      <EnhancedAIChat 
-                        sessionId={activeSession}
-                        currentStage={currentStage}
-                        onStageUpdate={handleStageUpdate}
-                        sessionTopics={sessionTopics}
-                        completionPercentage={completionPercentage}
-                        onNewMessage={handleNewMessage}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                
-                <TabsContent value="analysis" className="focus-visible:outline-none focus-visible:ring-0">
-                  <EmotionDetector 
-                    messages={messages} 
-                    onEmotionDetected={handleEmotionDetected}
-                    showVisualization={true}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="techniques" className="focus-visible:outline-none focus-visible:ring-0">
-                  <TherapyTechniques
-                    emotionData={emotionData}
-                    recommendedTechniques={emotionData?.recommendedTechniques}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="session" className="focus-visible:outline-none focus-visible:ring-0">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Session Progress</CardTitle>
-                      <CardDescription>Track your progress through this therapy session</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <TherapySessionFramework 
-                        stages={therapySessionStages}
-                        currentStage={currentStage}
-                        onStageChange={handleStageUpdate}
-                        completionPercentage={completionPercentage}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                
-                <TabsContent value="mood" className="focus-visible:outline-none focus-visible:ring-0">
-                  <MoodTracker 
-                    userId={user?.id} 
-                    emotionData={emotionData}
-                    compact={true}
-                    therapySession={activeSession ? {
-                      id: activeSession,
-                      title: sessions.find(s => s.id === activeSession)?.title || 'Therapy Session',
-                      currentStage: currentStage,
-                      primaryTopic: sessions.find(s => s.id === activeSession)?.topic
-                    } : undefined}
-                    onSave={handleMoodSaved}
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-            
-            <div>
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Session History</CardTitle>
-                    <CardDescription>Previous therapy sessions</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    {sessions.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No previous sessions found</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {sessions.slice(0, 5).map((session) => (
-                          <button
-                            key={session.id}
-                            className="w-full text-left p-3 rounded-md border border-border hover:border-primary hover:bg-accent transition-colors"
-                            onClick={() => loadSession(session.id)}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="font-medium text-sm">{session.title}</h4>
-                                <p className="text-xs text-muted-foreground">
-                                  {session.topic}
-                                </p>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {session.lastUpdated.toLocaleDateString()}
-                              </Badge>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                  {sessions.length > 0 && (
-                    <CardFooter>
-                      <Button variant="ghost" size="sm" className="w-full">
-                        <History className="mr-2 h-4 w-4" />
-                        View All Sessions
-                      </Button>
-                    </CardFooter>
-                  )}
-                </Card>
-                
-                {activeTab !== "mood" && (
-                  <MoodTracker 
-                    userId={user?.id} 
-                    emotionData={emotionData}
-                    compact={true}
-                    therapySession={activeSession ? {
-                      id: activeSession,
-                      title: sessions.find(s => s.id === activeSession)?.title || 'Therapy Session',
-                      currentStage: currentStage,
-                      primaryTopic: sessions.find(s => s.id === activeSession)?.topic
-                    } : undefined}
-                    onSave={handleMoodSaved}
-                  />
-                )}
+  // Helper for getting therapy session data for child components
+  const getSessionDetailsForActiveSession = (): TherapySessionDetails | undefined => {
+    if (!activeSession) return undefined;
+    
+    const sessionData = sessions.find(s => s.id === activeSession);
+    if (!sessionData) return undefined;
+    
+    return {
+      id: sessionData.id,
+      title: sessionData.title,
+      currentStage: currentStage,
+      primaryTopic: sessionData.topic
+    };
+  };
+  
+  const filteredSessions = sessions.filter((session) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      session.title.toLowerCase().includes(query) ||
+      session.topic.toLowerCase().includes(query)
+    );
+  });
 
-                {/* Add mood-based recommendations */}
-                {emotionData && (
-                  <MoodRecommendations
-                    emotionData={emotionData}
-                    userId={user?.id}
-                    compact={true}
-                  />
-                )}
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-hidden">
+      <div className="max-w-full">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">AI Therapy Assistant</h1>
+          <p className="text-muted-foreground">Chat with an AI assistant about your mental health concerns in a safe, private space.</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+          {/* Main Content - Chat Interface */}
+          <div className="flex h-[calc(100vh-12rem)] flex-col rounded-lg border bg-card">
+            <Tabs defaultValue="chat" value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+              <div className="border-b px-4">
+                <TabsList className="w-full justify-start">
+                  <TabsTrigger value="chat">Chat</TabsTrigger>
+                  <TabsTrigger value="info">Session Info</TabsTrigger>
+                </TabsList>
               </div>
+
+              <TabsContent value="chat" className="flex-1 overflow-hidden p-0 data-[state=active]:flex flex-col">
+                {!activeSession ? (
+                  <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                    <div className="max-w-md">
+                      <h3 className="text-xl font-medium">No Active Session</h3>
+                      <p className="mt-2 text-muted-foreground">
+                        Select an existing session or create a new one to start a conversation with your AI therapy assistant.
+                      </p>
+                      <Dialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
+                        <DialogTrigger asChild>
+                          <Button className="mt-4">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New AI Session
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Create New AI Therapy Session</DialogTitle>
+                            <DialogDescription>
+                              Set up your session details to get the most out of your AI therapy experience.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div>
+                              <Label htmlFor="title">Session Title</Label>
+                              <Input
+                                id="title"
+                                value={newSessionTitle}
+                                onChange={(e) => setNewSessionTitle(e.target.value)}
+                                placeholder="E.g., Anxiety Management"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="mood">Current Mood</Label>
+                              <Input
+                                id="mood"
+                                value={newSessionTopic}
+                                onChange={(e) => setNewSessionTopic(e.target.value)}
+                                placeholder="How are you feeling today?"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="topic">Main Topic</Label>
+                              <Textarea
+                                id="topic"
+                                value={newSessionGoal}
+                                onChange={(e) => setNewSessionGoal(e.target.value)}
+                                placeholder="What would you like to discuss?"
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                          <Button onClick={handleCreateSession}>Start Session</Button>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <ScrollArea className="flex-1 p-4">
+                      <div className="space-y-4">
+                        {messages.map((message, index) => (
+                          <div
+                            key={index}
+                            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                                message.role === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              <p>{message.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {showEmotionSuggestion && emotionData && (
+                          <div className="flex justify-start">
+                            <div className="max-w-[80%] rounded-lg bg-muted px-4 py-2 text-muted-foreground">
+                              <Alert className="mb-4 border-primary/50 bg-primary/10">
+                                <Heart className="h-4 w-4 text-primary" />
+                                <AlertTitle>Emotion Change Detected</AlertTitle>
+                                <AlertDescription className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                  <div>
+                                    I noticed you're feeling <span className="font-medium capitalize">{emotionData.primaryEmotion}</span>.
+                                    Would you like to track this in your mood history?
+                                  </div>
+                                  <Button 
+                                    size="sm" 
+                                    className="mt-2 sm:mt-0 sm:ml-4"
+                                    onClick={() => {
+                                      setActiveTab("mood");
+                                      setShowEmotionSuggestion(false);
+                                    }}
+                                  >
+                                    Track Mood
+                                    <ArrowRight className="ml-2 h-3 w-3" />
+                                  </Button>
+                                </AlertDescription>
+                              </Alert>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                    <div className="border-t p-4">
+                      <div className="flex gap-2">
+                        <Input
+                          value={newSessionGoal}
+                          onChange={(e) => setNewSessionGoal(e.target.value)}
+                          placeholder="Type your message..."
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleNewMessage({ role: "user", content: e.target.value });
+                              setNewSessionGoal("");
+                            }
+                          }}
+                        />
+                        <Button onClick={() => handleNewMessage({ role: "user", content: newSessionGoal })}>
+                          Send
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="info" className="data-[state=active]:block overflow-auto">
+                {activeSession ? (
+                  <div className="p-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <h3 className="mb-2 text-xl font-medium">{sessions.find(s => s.id === activeSession)?.title}</h3>
+                        <div className="mb-4 text-sm text-muted-foreground">
+                          {format(sessions.find(s => s.id === activeSession)?.lastUpdated || new Date(), "PPP")}
+                        </div>
+                        <div className="mb-2">
+                          <span className="font-medium">Mood:</span> {sessions.find(s => s.id === activeSession)?.topic}
+                        </div>
+                        <div>
+                          <span className="font-medium">Session Duration:</span> {sessionLength} minutes
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center p-4">
+                    <p className="text-muted-foreground">No active session selected</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sidebar - Session History */}
+          <div className="rounded-lg border bg-card">
+            <div className="flex items-center justify-between border-b p-4">
+              <h3 className="font-medium">Session History</h3>
+              <Dialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+            <div className="p-4">
+              <div className="relative mb-4">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search sessions..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <ScrollArea className="h-[calc(100vh-16rem)]">
+                <div className="space-y-2">
+                  {filteredSessions.length > 0 ? (
+                    filteredSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className={`cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent ${
+                          activeSession === session.id ? "border-primary" : ""
+                        }`}
+                        onClick={() => {
+                          setActiveSession(session.id);
+                          setActiveTab("chat");
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="overflow-hidden">
+                            <h4 className="font-medium text-truncate">{session.title}</h4>
+                            <p className="text-xs text-muted-foreground">{format(session.lastUpdated, "PP")}</p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <p className="mt-1 text-xs text-truncate">{session.topic}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-4 text-center text-sm text-muted-foreground">No sessions found</p>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

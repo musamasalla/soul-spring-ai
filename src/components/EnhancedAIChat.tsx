@@ -1066,36 +1066,40 @@ const EnhancedAIChat = ({
                 </Tooltip>
               </TooltipProvider>
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                    className={isVoiceEnabled ? "text-primary" : ""}
-                  >
-                    {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isVoiceEnabled ? "Disable Voice" : "Enable Voice"}
-                </TooltipContent>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                      className={isVoiceEnabled ? "text-primary" : ""}
+                    >
+                      {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isVoiceEnabled ? "Disable Voice" : "Enable Voice"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                    size="icon"
-                  variant="outline"
-                    onClick={createNewSession}
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                  New conversation
-              </TooltipContent>
-            </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                        size="icon"
+                      variant="outline"
+                        onClick={createNewSession}
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                      New conversation
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>

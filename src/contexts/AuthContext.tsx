@@ -1,8 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
+
+// Extend the Supabase User type with our custom properties
+interface User extends SupabaseUser {
+  is_premium?: boolean;
+  name?: string;
+  avatar?: string;
+  usage_limits?: {
+    ai_messages: number;
+    journal_entries: number;
+  };
+}
 
 interface UserProfile {
   id: string;
@@ -31,6 +42,7 @@ interface AuthContextType {
     data: Session | null;
   }>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{
     error: Error | null;
     data: any;
@@ -43,7 +55,8 @@ interface AuthContextType {
   };
 }
 
-const AuthContext = createContext<AuthContextType>({
+// Create context with a better name to avoid HMR issues
+const AuthContextInternal = createContext<AuthContextType>({
   session: null,
   user: null,
   isLoading: true,
@@ -52,6 +65,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ error: null, data: null }),
   signUp: async () => ({ error: null, data: null }),
   signOut: async () => {},
+  logout: async () => {},
   resetPassword: async () => ({ error: null, data: null }),
   enrollMFA: async () => '',
   verifyMFA: async () => false,
@@ -126,8 +140,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign out
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log("Attempting to sign out...");
+      const { error } = await supabase.auth.signOut();
+      console.log("Sign out response:", error);
+      
+      if (error) {
+        throw error;
+      }
+      
       toast.info("You have been logged out.");
+      console.log("Sign out successful");
     } catch (error) {
       console.error('Logout error:', error);
       toast.error("Logout failed. Please try again.");
@@ -216,7 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   return (
-    <AuthContext.Provider
+    <AuthContextInternal.Provider
       value={{
         session,
         user,
@@ -226,6 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signUp,
         signOut,
+        logout: signOut,
         resetPassword,
         enrollMFA,
         verifyMFA,
@@ -233,14 +256,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }}
     >
       {children}
-    </AuthContext.Provider>
+    </AuthContextInternal.Provider>
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
+// Export the hook as a named function declaration for better HMR compatibility
+export function useAuth() {
+  const context = useContext(AuthContextInternal);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
