@@ -126,8 +126,6 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
     setError(null);
     setIsUsingFallbackData(false);
     
-    console.log('Loading therapy data for user:', user.id);
-    
     try {
       // Fetch therapy goals with enhanced error handling
       const { data: goalsData, error: goalsError } = await safeQuery(() => 
@@ -154,10 +152,6 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
 
       // Check for database connection errors
       if (goalsError || sessionsError || sessionGoalsError) {
-        console.warn('Database connection issues detected, using fallback data:', { 
-          goalsError, sessionsError, sessionGoalsError 
-        });
-        
         // Toast notification for user
         toast.error('Unable to connect to database. Using offline data.');
         
@@ -191,16 +185,8 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
         // Set error message for display
         setError('Using offline data due to database connectivity issues');
       } else {
-        console.log('Successfully loaded therapy data:', {
-          goalsCount: goalsData?.length || 0,
-          sessionsCount: sessionsData?.length || 0,
-          sessionGoalsCount: sessionGoalsData?.length || 0
-        });
-        
         // If no goals exist but database connection works, initialize with default goals
         if (goalsData && goalsData.length === 0) {
-          console.log('No therapy goals found, initializing default goals for new user');
-          
           // Create default goals for new users
           const defaultGoals = MOCK_THERAPY_GOALS.map(goal => ({
             user_id: user.id,
@@ -218,10 +204,8 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
           );
           
           if (createError) {
-            console.error('Failed to create default goals:', createError);
             toast.error('Failed to initialize default therapy goals');
           } else if (createdGoals) {
-            console.log('Successfully created default goals:', createdGoals.length);
             toast.success('Initialized your therapy dashboard with starter goals');
             setTherapyGoals(createdGoals);
           }
@@ -235,7 +219,6 @@ export function TherapyDataProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Error loading therapy data:', errorMessage, err);
       setError(`Failed to load therapy data: ${errorMessage}`);
       toast.error('Error loading therapy data. Using offline data instead.');
       

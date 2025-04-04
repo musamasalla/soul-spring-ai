@@ -209,6 +209,8 @@ export function AppShell({
     }
   }, [location.pathname]);
   
+  const isSmallScreen = window.innerWidth < 768;
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
@@ -271,17 +273,17 @@ export function AppShell({
             <AnimatePresence>
               {isOpen && (
                 <motion.aside
-                  className="fixed inset-y-0 left-0 z-50 w-3/4 max-w-[280px] bg-background border-r shadow-lg lg:hidden overflow-y-auto"
+                  className="fixed inset-y-0 left-0 z-50 w-3/4 max-w-[280px] bg-sidebar-background text-sidebar-foreground border-r shadow-lg lg:hidden overflow-y-auto"
                   initial="closed"
                   animate="open"
                   exit="closed"
                   variants={sidebarVariants}
                 >
-                  <div className="flex items-center justify-between h-14 px-4 border-b">
+                  <div className="flex items-center justify-between h-14 px-4 border-b border-sidebar-border">
                     <Link to="/" className="flex items-center space-x-2" onClick={closeSidebar}>
                       <Logo size="sm" showText={true} />
                     </Link>
-                    <Button variant="ghost" size="icon" onClick={closeSidebar} className="touch-target">
+                    <Button variant="ghost" size="icon" onClick={closeSidebar} className="text-sidebar-foreground hover:text-sidebar-foreground/80 hover:bg-sidebar-accent/50">
                       <X className="h-5 w-5" />
                     </Button>
                   </div>
@@ -315,7 +317,7 @@ export function AppShell({
             <aside 
               className={cn(
                 "fixed top-14 z-30 h-[calc(100vh-3.5rem)] border-r shrink-0 overflow-y-auto transition-all duration-300",
-                "hidden lg:block",
+                "hidden lg:block bg-sidebar-background text-sidebar-foreground",
                 sidebarExpanded ? "w-64" : "w-16"
               )}
               onMouseEnter={handleMouseEnter}
@@ -352,8 +354,8 @@ export function AppShell({
                               "flex items-center py-3 rounded-md transition-colors overflow-hidden whitespace-nowrap",
                               sidebarExpanded ? "px-4" : "px-0 justify-center",
                               location.pathname === item.href
-                                ? "bg-secondary text-secondary-foreground font-medium"
-                                : "text-muted-foreground hover:bg-secondary/50"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                             )}
                           >
                             <item.icon className={cn(
@@ -385,7 +387,10 @@ export function AppShell({
         {/* Main content */}
         <main className="flex-1 overflow-hidden">
           {isOffline && <StatusBar isOffline={isOffline} />}
-          <div className="relative lg:pl-16">
+          <div className={cn(
+            "relative transition-all duration-300",
+            showNav && !isSmallScreen ? (sidebarExpanded ? "lg:pl-64" : "lg:pl-16") : ""
+          )}>
             {children}
           </div>
         </main>
