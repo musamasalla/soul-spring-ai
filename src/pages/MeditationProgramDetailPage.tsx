@@ -159,7 +159,7 @@ const MeditationProgramDetailPage: React.FC = () => {
   useEffect(() => {
     // Simulate API call
     const timer = setTimeout(() => {
-      setProgram(programData);
+        setProgram(programData);
       setIsPageLoading(false);
     }, 800);
     
@@ -205,13 +205,13 @@ const MeditationProgramDetailPage: React.FC = () => {
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Programs
       </Button>
-
+      
       {/* Program header */}
       <div className="relative mb-6 overflow-hidden rounded-lg">
         <div className="h-[200px] md:h-[300px] w-full relative overflow-hidden">
           <img 
             src={program.image || "/images/programs/default.jpg"} 
-            alt={program.title}
+              alt={program.title}
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
@@ -252,15 +252,15 @@ const MeditationProgramDetailPage: React.FC = () => {
               <span className="text-sm">{program.rating} rating</span>
             </div>
           </div>
-        </div>
-      </div>
-
+            </div>
+          </div>
+          
       {/* Progress bar */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-medium">Your Progress</div>
-            <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
               {program.completedSessions} of {program.totalSessions} sessions completed
             </div>
           </div>
@@ -283,11 +283,11 @@ const MeditationProgramDetailPage: React.FC = () => {
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <div className="scrollable-tabs mb-4">
           <TabsList className="tabs-container">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="instructor">Instructor</TabsTrigger>
             <TabsTrigger value="benefits">Benefits</TabsTrigger>
-          </TabsList>
+            </TabsList>
         </div>
 
         <TabsContent value="overview" className="mt-0">
@@ -311,9 +311,9 @@ const MeditationProgramDetailPage: React.FC = () => {
               <Separator className="my-6" />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+              <div>
                   <h3 className="text-lg font-medium mb-3">Program Structure</h3>
-                  <ul className="space-y-2">
+                <ul className="space-y-2">
                     <li className="flex items-center">
                       <BarChart className="mr-2 h-5 w-5 text-muted-foreground" />
                       <span>{program.duration} program</span>
@@ -326,10 +326,10 @@ const MeditationProgramDetailPage: React.FC = () => {
                       <Clock className="mr-2 h-5 w-5 text-muted-foreground" />
                       <span>10-20 minutes per session</span>
                     </li>
-                  </ul>
-                </div>
-                
-                <div>
+                </ul>
+              </div>
+              
+              <div>
                   <h3 className="text-lg font-medium mb-3">Recommended For</h3>
                   <ul className="space-y-2">
                     <li className="flex items-center">
@@ -345,16 +345,16 @@ const MeditationProgramDetailPage: React.FC = () => {
                       <span>Beginners to meditation</span>
                     </li>
                   </ul>
-                </div>
+                  </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
+            </TabsContent>
+            
         <TabsContent value="sessions" className="mt-0 space-y-4">
           {program.sessions.map((session, index) => (
             <Card key={session.id} className={session.completed ? "border-primary/30 bg-primary/5" : ""}>
-              <CardContent className="p-4">
+                      <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -363,15 +363,15 @@ const MeditationProgramDetailPage: React.FC = () => {
                         <Badge variant="outline" className="text-primary border-primary">
                           Completed
                         </Badge>
-                      )}
-                    </div>
+                              )}
+                            </div>
                     <h3 className="text-lg font-medium mb-1">{session.title}</h3>
                     <p className="text-sm text-muted-foreground mb-2">{session.description}</p>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Clock className="mr-1 h-4 w-4" />
                       <span>{session.duration} minutes</span>
                     </div>
-                  </div>
+                          </div>
                   <div className="shrink-0">
                     <Button 
                       size="sm"
@@ -386,13 +386,13 @@ const MeditationProgramDetailPage: React.FC = () => {
                         <Play className="h-4 w-4" />
                       )}
                     </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
           ))}
-        </TabsContent>
-
+            </TabsContent>
+            
         <TabsContent value="instructor" className="mt-0">
           <Card>
             <CardContent className="p-6">
@@ -410,8 +410,8 @@ const MeditationProgramDetailPage: React.FC = () => {
                   <h3 className="text-xl font-medium mb-2">{program.instructorName}</h3>
                   <p className="text-muted-foreground mb-4">Program Creator & Instructor</p>
                   <p>{program.instructorBio}</p>
-                </div>
-              </div>
+                            </div>
+                          </div>
             </CardContent>
           </Card>
         </TabsContent>

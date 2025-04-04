@@ -303,7 +303,7 @@ const AITherapyPage = () => {
       </div>
     );
   }
-
+  
   return (
     <div className="h-full overflow-hidden">
       <div className="max-w-full">
@@ -321,8 +321,8 @@ const AITherapyPage = () => {
                   <TabsTrigger value="chat">Chat</TabsTrigger>
                   <TabsTrigger value="info">Session Info</TabsTrigger>
                 </TabsList>
-              </div>
-
+            </div>
+            
               <TabsContent value="chat" className="flex-1 overflow-hidden p-0 data-[state=active]:flex flex-col">
                 {!activeSession ? (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center">
@@ -331,30 +331,30 @@ const AITherapyPage = () => {
                       <p className="mt-2 text-muted-foreground">
                         Select an existing session or create a new one to start a conversation with your AI therapy assistant.
                       </p>
-                      <Dialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
-                        <DialogTrigger asChild>
+            <Dialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
+              <DialogTrigger asChild>
                           <Button className="mt-4">
                             <Plus className="mr-2 h-4 w-4" />
                             New AI Session
-                          </Button>
-                        </DialogTrigger>
+                </Button>
+              </DialogTrigger>
                         <DialogContent>
-                          <DialogHeader>
+                <DialogHeader>
                             <DialogTitle>Create New AI Therapy Session</DialogTitle>
-                            <DialogDescription>
+                  <DialogDescription>
                               Set up your session details to get the most out of your AI therapy experience.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
                             <div>
                               <Label htmlFor="title">Session Title</Label>
-                              <Input
+                    <Input
                                 id="title"
-                                value={newSessionTitle}
-                                onChange={(e) => setNewSessionTitle(e.target.value)}
+                      value={newSessionTitle}
+                      onChange={(e) => setNewSessionTitle(e.target.value)}
                                 placeholder="E.g., Anxiety Management"
-                              />
-                            </div>
+                    />
+                  </div>
                             <div>
                               <Label htmlFor="mood">Current Mood</Label>
                               <Input
@@ -363,22 +363,22 @@ const AITherapyPage = () => {
                                 onChange={(e) => setNewSessionTopic(e.target.value)}
                                 placeholder="How are you feeling today?"
                               />
-                            </div>
+                  </div>
                             <div>
                               <Label htmlFor="topic">Main Topic</Label>
                               <Textarea
                                 id="topic"
-                                value={newSessionGoal}
+                      value={newSessionGoal} 
                                 onChange={(e) => setNewSessionGoal(e.target.value)}
                                 placeholder="What would you like to discuss?"
                                 rows={3}
                               />
-                            </div>
-                          </div>
+                  </div>
+                </div>
                           <Button onClick={handleCreateSession}>Start Session</Button>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
+              </DialogContent>
+            </Dialog>
+          </div>
                   </div>
                 ) : (
                   <>
@@ -400,30 +400,30 @@ const AITherapyPage = () => {
                             </div>
                           </div>
                         ))}
-                        {showEmotionSuggestion && emotionData && (
+          {showEmotionSuggestion && emotionData && (
                           <div className="flex justify-start">
                             <div className="max-w-[80%] rounded-lg bg-muted px-4 py-2 text-muted-foreground">
-                              <Alert className="mb-4 border-primary/50 bg-primary/10">
-                                <Heart className="h-4 w-4 text-primary" />
-                                <AlertTitle>Emotion Change Detected</AlertTitle>
+            <Alert className="mb-4 border-primary/50 bg-primary/10">
+              <Heart className="h-4 w-4 text-primary" />
+              <AlertTitle>Emotion Change Detected</AlertTitle>
                                 <AlertDescription className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                  <div>
-                                    I noticed you're feeling <span className="font-medium capitalize">{emotionData.primaryEmotion}</span>.
-                                    Would you like to track this in your mood history?
-                                  </div>
-                                  <Button 
-                                    size="sm" 
+                <div>
+                  I noticed you're feeling <span className="font-medium capitalize">{emotionData.primaryEmotion}</span>.
+                  Would you like to track this in your mood history?
+                </div>
+                <Button 
+                  size="sm" 
                                     className="mt-2 sm:mt-0 sm:ml-4"
-                                    onClick={() => {
-                                      setActiveTab("mood");
-                                      setShowEmotionSuggestion(false);
-                                    }}
-                                  >
-                                    Track Mood
-                                    <ArrowRight className="ml-2 h-3 w-3" />
-                                  </Button>
-                                </AlertDescription>
-                              </Alert>
+                  onClick={() => {
+                    setActiveTab("mood");
+                    setShowEmotionSuggestion(false);
+                  }}
+                >
+                  Track Mood
+                  <ArrowRight className="ml-2 h-3 w-3" />
+                </Button>
+              </AlertDescription>
+            </Alert>
                             </div>
                           </div>
                         )}
@@ -450,12 +450,12 @@ const AITherapyPage = () => {
                     </div>
                   </>
                 )}
-              </TabsContent>
-
+                </TabsContent>
+                
               <TabsContent value="info" className="data-[state=active]:block overflow-auto">
                 {activeSession ? (
                   <div className="p-4">
-                    <Card>
+                  <Card>
                       <CardContent className="p-4">
                         <h3 className="mb-2 text-xl font-medium">{sessions.find(s => s.id === activeSession)?.title}</h3>
                         <div className="mb-4 text-sm text-muted-foreground">
@@ -467,18 +467,18 @@ const AITherapyPage = () => {
                         <div>
                           <span className="font-medium">Session Duration:</span> {sessionLength} minutes
                         </div>
-                      </CardContent>
-                    </Card>
+                    </CardContent>
+                  </Card>
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center p-4">
                     <p className="text-muted-foreground">No active session selected</p>
                   </div>
                 )}
-              </TabsContent>
-            </Tabs>
-          </div>
-
+                </TabsContent>
+              </Tabs>
+            </div>
+            
           {/* Sidebar - Session History */}
           <div className="rounded-lg border bg-card">
             <div className="flex items-center justify-between border-b p-4">
@@ -502,11 +502,11 @@ const AITherapyPage = () => {
                 />
               </div>
               <ScrollArea className="h-[calc(100vh-16rem)]">
-                <div className="space-y-2">
+                      <div className="space-y-2">
                   {filteredSessions.length > 0 ? (
                     filteredSessions.map((session) => (
                       <div
-                        key={session.id}
+                            key={session.id}
                         className={`cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent ${
                           activeSession === session.id ? "border-primary" : ""
                         }`}
@@ -519,7 +519,7 @@ const AITherapyPage = () => {
                           <div className="overflow-hidden">
                             <h4 className="font-medium text-truncate">{session.title}</h4>
                             <p className="text-xs text-muted-foreground">{format(session.lastUpdated, "PP")}</p>
-                          </div>
+                              </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8">
@@ -531,14 +531,14 @@ const AITherapyPage = () => {
                               <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </div>
+                            </div>
                         <p className="mt-1 text-xs text-truncate">{session.topic}</p>
                       </div>
                     ))
                   ) : (
                     <p className="py-4 text-center text-sm text-muted-foreground">No sessions found</p>
-                  )}
-                </div>
+                )}
+              </div>
               </ScrollArea>
             </div>
           </div>

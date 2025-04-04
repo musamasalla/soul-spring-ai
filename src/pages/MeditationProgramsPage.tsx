@@ -191,25 +191,25 @@ export default function MeditationProgramsPage() {
                   <div className="relative aspect-video w-full overflow-hidden">
                     <img
                       src={program.image || "https://via.placeholder.com/400x225?text=Program+Image"}
-                      alt={program.title}
+          alt={program.title}
                       className="h-full w-full object-cover transition-transform hover:scale-105"
-                    />
+        />
                     {program.premium && (
                       <Badge className="absolute right-2 top-2 bg-amber-500 text-white">
-                        Premium
-                      </Badge>
-                    )}
-                  </div>
+            Premium
+          </Badge>
+        )}
+      </div>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <Badge variant="outline" className="font-normal">
                         {program.category}
-                      </Badge>
+            </Badge>
                       <div className="flex items-center text-amber-500">
                         <Star className="mr-1 h-4 w-4 fill-current" />
                         <span className="text-sm">{program.rating}</span>
-                      </div>
-                    </div>
+          </div>
+        </div>
                     <CardTitle className="mt-2 line-clamp-1">{program.title}</CardTitle>
                     <CardDescription className="line-clamp-2">{program.description}</CardDescription>
                   </CardHeader>
@@ -218,11 +218,11 @@ export default function MeditationProgramsPage() {
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="mr-1 h-4 w-4" />
                         {program.duration}
-                      </div>
+      </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <BookOpen className="mr-1 h-4 w-4" />
                         {program.sessions} sessions
-                      </div>
+        </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Heart className="mr-1 h-4 w-4" />
                         {program.users.toLocaleString()} users
@@ -233,11 +233,11 @@ export default function MeditationProgramsPage() {
                         <div className="mb-1 flex items-center justify-between text-xs">
                           <span>Progress</span>
                           <span>{program.progress}%</span>
-                        </div>
+                  </div>
                         <Progress value={program.progress} className="h-2" />
-                      </div>
-                    )}
-                  </CardContent>
+            </div>
+          )}
+      </CardContent>
                   <CardFooter className="pt-0">
                     <Button
                       className="w-full"
@@ -246,9 +246,9 @@ export default function MeditationProgramsPage() {
                       disabled={program.premium && !isPremium}
                     >
                       {program.progress > 0 ? "Continue" : "Start Program"}
-                    </Button>
-                  </CardFooter>
-                </Card>
+        </Button>
+      </CardFooter>
+    </Card>
               </motion.div>
             ))}
           </motion.div>
